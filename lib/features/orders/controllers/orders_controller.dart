@@ -25,6 +25,8 @@ class OrdersController extends GetxController {
   final List<String> orderStatuses = [
     'pending', // Ожидает
     'processing', // Обрабатывается
+    'preparing', // Готовится
+    'in_transit', // В пути
     'shipped', // Отправлен
     'delivered', // Доставлен
     'cancelled', // Отменен
@@ -36,13 +38,16 @@ class OrdersController extends GetxController {
     loadOrders();
   }
 
-  /// Загрузка всех заказов
+  /// Загрузка всех заказов с полной информацией о товарах
   Future<void> loadOrders() async {
     try {
       isLoading.value = true;
       final ordersList = await _orderRepository.fetchOrdersAsModels();
       orders.value = ordersList;
+      print(
+          '✅ Загружено ${ordersList.length} заказов с полной информацией о товарах');
     } catch (e) {
+      print('❌ Ошибка загрузки заказов с информацией о товарах: $e');
       Get.snackbar('Ошибка', 'Не удалось загрузить заказы: $e');
     } finally {
       isLoading.value = false;
@@ -96,14 +101,11 @@ class OrdersController extends GetxController {
       if (success) {
         // Перезагружаем список заказов
         await loadOrders();
-        Get.snackbar('Успех', 'Заказ успешно создан');
         return true;
       } else {
-        Get.snackbar('Ошибка', 'Не удалось создать заказ');
         return false;
       }
     } catch (e) {
-      Get.snackbar('Ошибка', 'Ошибка при создании заказа: $e');
       return false;
     } finally {
       isLoading.value = false;
@@ -150,6 +152,8 @@ class OrdersController extends GetxController {
         sellerName: order.sellerName,
         createdAt: order.createdAt,
         updatedAt: DateTime.now(),
+        productDescription: order.productDescription,
+        productCategory: order.productCategory,
       );
 
       orders[orderIndex] = updatedOrder;
@@ -158,8 +162,6 @@ class OrdersController extends GetxController {
       if (selectedOrder.value?.id == order.id) {
         selectedOrder.value = updatedOrder;
       }
-
-      Get.snackbar('Статус обновлен', 'Заказ #${order.id} - $newStatus');
     }
   }
 
@@ -168,7 +170,8 @@ class OrdersController extends GetxController {
     // Последовательность статусов для эмитации доставки
     final deliveryStatuses = [
       'processing', // Обрабатывается
-      'shipped', // Отправлен
+      'preparing', // Готовится
+      'in_transit', // В пути
       'delivered', // Доставлен
     ];
 

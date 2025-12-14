@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kollibry/common/themes/theme.dart';
@@ -6,17 +5,19 @@ import '../../../../utils/device/screen_util.dart';
 import '../../buyer/product_card/views/product_card_screen.dart';
 import '../../cart/controllers/cart_controller.dart';
 import '../../home/models/product_model.dart';
-import '../../../common/styles/colors.dart';
-import '../../../common/styles/sizes.dart';
-import '../../../common/themes/text_theme.dart';
 import '../../../utils/helpers/hex_image.dart';
 
 class ProductGrid extends StatelessWidget {
   final List<Map<String, dynamic>> products;
   final void Function(Map<String, dynamic> product)? onProductTap;
+  final bool showCartButton; // Параметр для показа/скрытия кнопки корзины
 
-  const ProductGrid({Key? key, required this.products, this.onProductTap})
-      : super(key: key);
+  const ProductGrid({
+    Key? key,
+    required this.products,
+    this.onProductTap,
+    this.showCartButton = true, // По умолчанию показываем корзину
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +96,9 @@ class ProductGrid extends StatelessWidget {
                     children: [
                       Text(
                         product.name,
-                        style: TAppTheme.lightTheme.textTheme.labelMedium,
+                        style: TAppTheme.lightTheme.textTheme.labelMedium?.copyWith(
+                          color: Colors.black,
+                        ),
                       ),
                       Text(
                         "${product.price} ₽",
@@ -104,17 +107,30 @@ class ProductGrid extends StatelessWidget {
                             .bodySmall
                             ?.copyWith(color: Colors.blue),
                       ),
-                      // Align(
-                      //   alignment: Alignment.centerRight,
-                      //   child: IconButton(
-                      //     icon: Icon(Icons.add_shopping_cart,
-                      //         color: Colors.green),
-                      //     onPressed: () {
-                      //       final cartController = Get.find<CartController>();
-                      //       cartController.addToCart(product.toJson());
-                      //     },
-                      //   ),
-                      // ),
+                      SizedBox(height: 4),
+                      // Кнопка добавления в корзину (только для покупателя)
+                      if (showCartButton)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: IconButton(
+                            icon: Icon(Icons.add_shopping_cart,
+                                color: Colors.green, size: 20),
+                            onPressed: () {
+                              try {
+                                final cartController = Get.find<CartController>();
+                                cartController.addToCart(product.toJson());
+                              } catch (e) {
+                                Get.snackbar(
+                                  'Ошибка',
+                                  'Не удалось добавить товар в корзину',
+                                  backgroundColor: Colors.red,
+                                  colorText: Colors.white,
+                                  duration: Duration(seconds: 2),
+                                );
+                              }
+                            },
+                          ),
+                        ),
                     ],
                   ),
                 ),

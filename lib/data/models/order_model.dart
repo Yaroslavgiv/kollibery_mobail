@@ -14,6 +14,10 @@ class OrderModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  // Дополнительная информация о товаре
+  final String productDescription;
+  final String productCategory;
+
   OrderModel({
     required this.id,
     required this.userId,
@@ -29,6 +33,8 @@ class OrderModel {
     required this.sellerName,
     this.createdAt,
     this.updatedAt,
+    this.productDescription = '',
+    this.productCategory = '',
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -46,15 +52,20 @@ class OrderModel {
       status: json['status'] ?? 'pending',
       productName: json['productName'] ?? '',
       productImage: json['productImage'] ?? '',
-      price: (json['price'] is num) ? (json['price'] as num).toDouble() : 0.0,
+      // Используем productPrice если есть, иначе price
+      price: (json['productPrice'] is num)
+          ? (json['productPrice'] as num).toDouble()
+          : ((json['price'] is num) ? (json['price'] as num).toDouble() : 0.0),
       buyerName: json['buyerName'] ?? '',
       sellerName: json['sellerName'] ?? '',
       createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'])
+          ? DateTime.tryParse(json['createdAt'].toString())
           : null,
       updatedAt: json['updatedAt'] != null
-          ? DateTime.tryParse(json['updatedAt'])
+          ? DateTime.tryParse(json['updatedAt'].toString())
           : null,
+      productDescription: json['productDescription'] ?? '',
+      productCategory: json['productCategory'] ?? '',
     );
   }
 
@@ -74,6 +85,8 @@ class OrderModel {
       'sellerName': sellerName,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
+      'productDescription': productDescription,
+      'productCategory': productCategory,
     };
   }
 }

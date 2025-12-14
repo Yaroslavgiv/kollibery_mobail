@@ -16,22 +16,31 @@ class CartController extends GetxController {
 
   void addToCart(Map<String, dynamic> product) {
     cartItems.add(product);
-    Get.snackbar(
-      duration: Duration(seconds: 2),
-      "Успешно",
-      "Товар добавлен в корзину",
-      snackPosition: SnackPosition.BOTTOM,
-    );
   }
 
   void removeFromCart(Map<String, dynamic> product) {
     cartItems.remove(product);
-    Get.snackbar(
-      duration: Duration(seconds: 2),
-      "Успешно",
-      "Товар удалён из корзины",
-      snackPosition: SnackPosition.BOTTOM,
-    );
+  }
+
+  /// Удаление товара из корзины по ID товара
+  void removeFromCartById(int productId) {
+    final index = cartItems.indexWhere((item) => item['id'] == productId);
+    if (index != -1) {
+      cartItems.removeAt(index);
+    }
+  }
+
+  double getTotalPrice() {
+    double total = 0.0;
+    for (var item in cartItems) {
+      final price = item['price'];
+      if (price is num) {
+        total += price.toDouble();
+      } else if (price is String) {
+        total += double.tryParse(price) ?? 0.0;
+      }
+    }
+    return total;
   }
 
   void saveCartItems() {
@@ -46,11 +55,5 @@ class CartController extends GetxController {
   void clearCart() {
     cartItems.clear();
     storage.remove('cartItems');
-    Get.snackbar(
-      duration: Duration(seconds: 2),
-      "Корзина очищена",
-      "Все товары удалены из корзины",
-      snackPosition: SnackPosition.BOTTOM,
-    );
   }
 }

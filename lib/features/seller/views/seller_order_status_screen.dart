@@ -4,11 +4,31 @@ import "package:get/get.dart";
 import "../../../common/themes/text_theme.dart";
 import "../controllers/seller_order_processing_controller.dart";
 
-class SellerOrderStatusScreen extends StatelessWidget {
+class SellerOrderStatusScreen extends StatefulWidget {
+  @override
+  State<SellerOrderStatusScreen> createState() => _SellerOrderStatusScreenState();
+}
+
+class _SellerOrderStatusScreenState extends State<SellerOrderStatusScreen> {
+  late SellerOrderProcessingController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    // Инициализируем контроллер, если его еще нет
+    controller = Get.put(SellerOrderProcessingController());
+  }
+
+  @override
+  void dispose() {
+    // Удаляем контроллер при выходе с экрана, чтобы избежать утечек памяти
+    Get.delete<SellerOrderProcessingController>();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return GetBuilder<SellerOrderProcessingController>(
-      init: SellerOrderProcessingController(),
       builder: (controller) {
         return Scaffold(
           appBar: AppBar(

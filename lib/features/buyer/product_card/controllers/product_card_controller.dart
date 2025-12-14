@@ -14,21 +14,9 @@ class ProductCardController extends GetxController {
       cartController.addToCart(product);
     }
     isInCart.value = !isInCart.value;
-    Get.snackbar(
-      "Успешно",
-      isInCart.value ? "Товар добавлен в корзину" : "Товар удалён из корзины",
-      snackPosition: SnackPosition.BOTTOM,
-    );
   }
 
   void toggleFavoriteStatus() {
     isInFavorites.value = !isInFavorites.value;
-    Get.snackbar(
-      "Успешно",
-      isInFavorites.value
-          ? "Товар добавлен в избранное"
-          : "Товар удалён из избранного",
-      snackPosition: SnackPosition.BOTTOM,
-    );
   }
 }

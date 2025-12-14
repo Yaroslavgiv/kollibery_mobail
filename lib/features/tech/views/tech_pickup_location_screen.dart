@@ -1,13 +1,12 @@
 import "dart:convert";
 import "package:flutter/material.dart";
 import "package:flutter_map/flutter_map.dart";
-import "package:get_storage/get_storage.dart";
 import "package:latlong2/latlong.dart";
 import "package:get/get.dart";
 import "package:location/location.dart";
 import "package:http/http.dart" as http;
-import "../../../common/styles/colors.dart";
 import "../../../data/models/order_model.dart";
+import "../../../common/widgets/swipe_confirm_dialog.dart";
 
 /// Экран выбора точки посадки дрона для техника
 class TechPickupLocationScreen extends StatefulWidget {
@@ -36,6 +35,8 @@ class _TechPickupLocationScreenState extends State<TechPickupLocationScreen> {
   LatLng _defaultPosition = LatLng(59.9343, 30.3351);
   Marker? _pickupMarker;
   bool _isLoading = false;
+  // Тип карты: true - спутниковая, false - обычная
+  bool _isSatelliteView = false;
 
   @override
   void initState() {
@@ -56,7 +57,8 @@ class _TechPickupLocationScreenState extends State<TechPickupLocationScreen> {
       PermissionStatus permissionGranted = await _location.hasPermission();
       if (permissionGranted == PermissionStatus.denied) {
         permissionGranted = await _location.requestPermission();
-        if (permissionGranted != PermissionStatus.granted) return;
+        if (permissionGranted != PermissionStatus.granted &&
+            permissionGranted != PermissionStatus.grantedLimited) return;
       }
 
       LocationData locationData = await _location.getLocation();
@@ -77,23 +79,8 @@ class _TechPickupLocationScreenState extends State<TechPickupLocationScreen> {
 
       // Перемещаем карту к текущему местоположению
       _mapController.move(newPosition, 16.0);
-
-      Get.snackbar(
-        'Местоположение определено',
-        'Текущее местоположение: ${newPosition.latitude.toStringAsFixed(6)}, ${newPosition.longitude.toStringAsFixed(6)}',
-        duration: Duration(seconds: 2),
-        backgroundColor: Colors.blue,
-        colorText: Colors.white,
-      );
     } catch (e) {
       print("Ошибка получения местоположения: $e");
-      Get.snackbar(
-        'Ошибка',
-        'Не удалось получить текущее местоположение',
-        duration: Duration(seconds: 2),
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
     } finally {
       setState(() => _isLoading = false);
     }
@@ -116,54 +103,17 @@ class _TechPickupLocationScreenState extends State<TechPickupLocationScreen> {
   }
 
   void _showDroneCallDialog(LatLng point) {
-    Get.dialog(
-      AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text(
-          "Подтвердить точку посадки дрона",
-          style: TextStyle(color: Colors.black),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Выбранные координаты:",
-              style: TextStyle(color: Colors.black87),
-            ),
-            SizedBox(height: 8),
-            Text(
-              "Широта: ${point.latitude.toStringAsFixed(6)}",
-              style: TextStyle(color: Colors.black87),
-            ),
-            Text(
-              "Долгота: ${point.longitude.toStringAsFixed(6)}",
-              style: TextStyle(color: Colors.black87),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text(
-              "Отмена",
-              style: TextStyle(color: Colors.black),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              // Переход к экрану статусов отправки заказа
-              Get.toNamed("/tech-delivery-status", arguments: widget.orderData);
-            },
-            child: Text("Вызвать дрон"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
+    SwipeConfirmDialog.show(
+      context: context,
+      title: "Подтвердить точку посадки дрона",
+      message: "Выбранные координаты:\nШирота: ${point.latitude.toStringAsFixed(6)}\nДолгота: ${point.longitude.toStringAsFixed(6)}\n\nВызвать дрон к этой точке?",
+      confirmText: "Вызвать дрон",
+      confirmColor: Colors.blue,
+      icon: Icons.flight_takeoff,
+      onConfirm: () {
+        // Переход к экрану статусов отправки заказа
+        Get.toNamed("/tech-delivery-status", arguments: widget.orderData);
+      },
     );
   }
 
@@ -228,7 +178,9 @@ class _TechPickupLocationScreenState extends State<TechPickupLocationScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                urlTemplate: _isSatelliteView
+                    ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                    : "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 userAgentPackageName: "com.example.kollibry",
               ),
               if (_pickupMarker != null) MarkerLayer(markers: [_pickupMarker!]),
@@ -261,14 +213,36 @@ class _TechPickupLocationScreenState extends State<TechPickupLocationScreen> {
               ),
             ),
           ),
-          // Кнопка определения местоположения
+          /// Кнопки управления картой
           Positioned(
             bottom: 20,
             right: 20,
-            child: FloatingActionButton(
-              backgroundColor: Colors.black,
-              onPressed: _getCurrentLocation,
-              child: const Icon(Icons.my_location, color: Colors.white),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                /// Кнопка переключения вида карты
+                FloatingActionButton(
+                  backgroundColor: Colors.blue,
+                  onPressed: () {
+                    setState(() {
+                      _isSatelliteView = !_isSatelliteView;
+                    });
+                  },
+                  heroTag: 'map_type',
+                  child: Icon(
+                    _isSatelliteView ? Icons.map : Icons.satellite,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 10),
+                /// Кнопка для получения текущего местоположения
+                FloatingActionButton(
+                  backgroundColor: Colors.blue,
+                  onPressed: _getCurrentLocation,
+                  heroTag: 'my_location',
+                  child: const Icon(Icons.my_location, color: Colors.white),
+                ),
+              ],
             ),
           ),
           if (_isLoading)

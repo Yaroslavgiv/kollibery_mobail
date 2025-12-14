@@ -121,26 +121,40 @@ class EditProfileScreen extends StatelessWidget {
 
               // Кнопка сохранения
               Center(
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Обновляем данные профиля
-                    profileController.updateProfile(
-                      firstName: firstNameController.text,
-                      lastName: lastNameController.text,
-                      email: emailController.text,
-                      phone: phoneController.text,
-                    );
+                child: Obx(() => ElevatedButton(
+                  onPressed: profileController.isLoading.value
+                      ? null
+                      : () async {
+                          // Валидация полей
+                          if (firstNameController.text.trim().isEmpty) {
+                            return;
+                          }
+                          if (lastNameController.text.trim().isEmpty) {
+                            return;
+                          }
+                          if (emailController.text.trim().isEmpty) {
+                            return;
+                          }
 
-                    // Возвращаемся на предыдущий экран
-                    Get.back();
+                          try {
+                            // Обновляем данные профиля
+                            await profileController.updateProfile(
+                              firstName: firstNameController.text.trim(),
+                              lastName: lastNameController.text.trim(),
+                              email: emailController.text.trim(),
+                              phone: phoneController.text.trim(),
+                            );
 
-                    // Показываем уведомление
-                    Get.snackbar(
-                      'Успешно',
-                      'Данные профиля обновлены',
-                      snackPosition: SnackPosition.BOTTOM,
-                    );
-                  },
+                            // Возвращаемся на предыдущий экран
+                            Get.back();
+                          } catch (e) {
+                            Get.snackbar(
+                              'Ошибка',
+                              'Не удалось обновить данные профиля: ${e.toString()}',
+                              snackPosition: SnackPosition.BOTTOM,
+                            );
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: KColors.primary,
                     padding: EdgeInsets.symmetric(
@@ -148,11 +162,20 @@ class EditProfileScreen extends StatelessWidget {
                       horizontal: ScreenUtil.adaptiveWidth(40),
                     ),
                   ),
-                  child: Text(
-                    'Сохранить',
-                    style: KTextTheme.lightTextTheme.bodyLarge, // Стиль кнопки
-                  ),
-                ),
+                  child: profileController.isLoading.value
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          'Сохранить',
+                          style: KTextTheme.lightTextTheme.bodyLarge, // Стиль кнопки
+                        ),
+                )),
               ),
             ],
           ),

@@ -13,7 +13,7 @@ import '../../../utils/device/screen_util.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../cart/controllers/cart_controller.dart';
 import '../../cart/views/cart_screen.dart';
-import '../../favorites/views/favorites_screen.dart';
+import '../../orders/views/order_list_screen.dart';
 import '../../profile/controllers/profile_controller.dart'; // Импорт контроллера профиля
 import 'home_screen.dart';
 
@@ -31,7 +31,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     HomePage(),
-    FavoritesScreen(),
+    OrderListScreen(),
     CartScreen(),
   ];
 
@@ -47,6 +47,45 @@ class _MainScreenState extends State<MainScreen> {
       default:
         return 'Пользователь';
     }
+  }
+
+  /// Показывает диалог подтверждения выхода
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            "Выход из аккаунта",
+            style: TextStyle(color: Colors.black),
+          ),
+          content: Text(
+            "Вы уверены, что хотите выйти из аккаунта?",
+            style: TextStyle(color: Colors.black),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                "Отмена",
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                authController.logout();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: Text("Выйти"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -163,16 +202,6 @@ class _MainScreenState extends State<MainScreen> {
                 Navigator.pop(context);
               },
             ),
-            ListTile(
-              leading: Icon(Icons.logout, color: KColors.primary),
-              title: Text(
-                Strings.logout,
-                style: KTextTheme.lightTextTheme.titleMedium,
-              ),
-              onTap: () {
-                authController.logout();
-              },
-            ),
           ],
         ),
       ),
@@ -183,6 +212,13 @@ class _MainScreenState extends State<MainScreen> {
           style: TAppTheme.lightTheme.appBarTheme.titleTextStyle,
         ),
         backgroundColor: KColors.primary,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout, color: Colors.white),
+            onPressed: _showLogoutDialog,
+            tooltip: 'Выйти из аккаунта',
+          ),
+        ],
       ),
       body: _pages[_currentIndex],
       bottomNavigationBar: Container(
@@ -214,8 +250,8 @@ class _MainScreenState extends State<MainScreen> {
               label: Strings.home,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.favorite),
-              label: Strings.favorites,
+              icon: Icon(Icons.history),
+              label: Strings.orderHistory,
             ),
             BottomNavigationBarItem(
               icon: Obx(() {

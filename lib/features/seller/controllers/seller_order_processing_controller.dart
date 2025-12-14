@@ -5,6 +5,8 @@ import "../../../data/models/order_model.dart";
 import "../../../data/repositories/order_repository.dart";
 
 class SellerOrderProcessingController extends GetxController {
+  // Репозиторий для работы с заказами (может использоваться в будущем)
+  // ignore: unused_field
   final OrderRepository _orderRepository = OrderRepository();
 
   var currentStep =
@@ -20,13 +22,25 @@ class SellerOrderProcessingController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    // Получаем аргументы из навигации
     final arguments = Get.arguments;
     if (arguments != null && arguments is OrderModel) {
       orderData.value = arguments;
+      print(
+          '✅ SellerOrderProcessingController: Получен заказ ${orderData.value?.id}');
+    } else {
+      print(
+          '⚠️ SellerOrderProcessingController: Аргументы не переданы или неверного типа');
     }
     startOrderProcessing();
     // Запускаем автоматическое обновление статусов
     _startAutomaticStatusUpdate();
+  }
+
+  @override
+  void onClose() {
+    // Очищаем ресурсы при закрытии контроллера
+    super.onClose();
   }
 
   void _startAutomaticStatusUpdate() {
@@ -85,7 +99,7 @@ class SellerOrderProcessingController extends GetxController {
           children: [
             Text(
               "Дрон доставил товар. Выберите действие:",
-              style: TextStyle(color: Colors.black87),
+              style: TextStyle(color: Colors.black),
             ),
             SizedBox(height: 20),
             Row(
@@ -134,32 +148,18 @@ class SellerOrderProcessingController extends GetxController {
   }
 
   void _openCargoBay() {
-    Get.snackbar(
-      "Грузовой отсек",
-      "Грузовой отсек открыт",
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-    );
+    // Грузовой отсек открыт
   }
 
   void _closeCargoBay() {
-    Get.snackbar(
-      "Грузовой отсек",
-      "Грузовой отсек закрыт",
-      backgroundColor: Colors.orange,
-      colorText: Colors.white,
-    );
+    // Грузовой отсек закрыт
   }
 
-  void _sendDroneBack() {
-    Get.snackbar(
-      "Дрон отправлен",
-      "Дрон возвращается на базу",
-      backgroundColor: Colors.blue,
-      colorText: Colors.white,
-    );
-    // Можно добавить переход на главный экран или обновление списка заказов
-    Get.back(); // Возвращаемся к списку заказов
+  void _sendDroneBack() async {
+    // Небольшая задержка для закрытия диалога
+    await Future.delayed(Duration(milliseconds: 300));
+    // Переход на главный экран после отправки дрона покупателю
+    Get.offAllNamed('/home');
   }
 
   void resetProcess() {
@@ -180,7 +180,6 @@ class SellerOrderProcessingController extends GetxController {
     try {
       // Временно используем заглушку, пока не будет реализован API
       print('Обновление статуса заказа $orderId на $status');
-      Get.snackbar('Успех', 'Статус заказа обновлен');
     } catch (e) {
       Get.snackbar('Ошибка', 'Не удалось обновить статус: $e');
     }

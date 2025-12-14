@@ -1,16 +1,23 @@
 import 'package:dio/dio.dart';
+import 'package:get_storage/get_storage.dart';
+import '../../utils/constants/api_constants.dart';
 import '../../features/home/models/product_model.dart';
 import '../../features/auth/controllers/auth_controller.dart';
 import 'package:get/get.dart';
 
 class AuthRepository {
-  final Dio _dio = Dio(BaseOptions(baseUrl: 'http://80.90.191.66'));
+  final Dio _dio = Dio(BaseOptions(
+    baseUrl: API_BASE_URL,
+    connectTimeout: Duration(seconds: 30),
+    receiveTimeout: Duration(seconds: 30),
+    sendTimeout: Duration(seconds: 30),
+  ));
 
   /// Регистрация
   /// POST /account/register
-  /// Тело: { "firstName": "...", "lastName": "...", "email": "...", "password": "...", "confirmPassword": "..." }
+  /// Тело: { "firstName": "...", "lastName": "...", "email": "...", "password": "...", "confirmPassword": "...", "role": "..." }
   Future<void> register(String firstName, String lastName, String email,
-      String password, String confirmPassword) async {
+      String password, String confirmPassword, String role) async {
     try {
       final response = await _dio.post(
         '/account/register',
@@ -20,15 +27,35 @@ class AuthRepository {
           "email": email,
           "password": password,
           "confirmPassword": confirmPassword,
+          "role": role,
         },
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
       );
-      if (response.statusCode != 200) {
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Ошибка регистрации. Код: ${response.statusCode}');
       }
-      print('Регистрация успешна: ${response.data}');
     } on DioException catch (e) {
-      print('Ошибка при регистрации: ${e.message}');
-      throw Exception('Ошибка при регистрации: ${e.message}');
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        throw Exception(
+            'Превышено время ожидания. Проверьте подключение к интернету.');
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+            'Ошибка подключения к серверу. Проверьте интернет-соединение.');
+      } else if (e.response?.statusCode == 400) {
+        throw Exception('Неверные данные для регистрации.');
+      } else if (e.response?.statusCode == 409) {
+        throw Exception('Пользователь с таким email уже существует.');
+      } else {
+        throw Exception('Ошибка при регистрации: ${e.message}');
+      }
     }
   }
 
@@ -43,17 +70,139 @@ class AuthRepository {
           "email": email,
           "password": password,
         },
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
       );
 
-      if (response.statusCode != 200) {
+      if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Ошибка логина. Код: ${response.statusCode}');
       }
 
-      print('Логин успешен: ${response.data}');
       return response.data;
     } on DioException catch (e) {
-      print('Ошибка при логине: ${e.message}');
-      throw Exception('Ошибка при логине: ${e.message}');
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        throw Exception(
+            'Превышено время ожидания. Проверьте подключение к интернету.');
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+            'Ошибка подключения к серверу. Проверьте интернет-соединение.');
+      } else if (e.response?.statusCode == 401) {
+        throw Exception('Неверный email или пароль.');
+      } else if (e.response?.statusCode == 404) {
+        throw Exception('Пользователь не найден.');
+      } else {
+        throw Exception('Ошибка при логине: ${e.message}');
+      }
+    }
+  }
+
+  /// Обновление профиля пользователя
+  /// PUT /account/updateProfile или POST /account/updateProfile
+  /// Тело: { "firstName": "...", "lastName": "...", "email": "...", "phone": "..." }
+  Future<Map<String, dynamic>> updateProfile({
+    required String firstName,
+    required String lastName,
+    required String email,
+    String? phone,
+  }) async {
+    try {
+      // Получаем токен из хранилища
+      final box = GetStorage();
+      final token = box.read<String>('token');
+      
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await _dio.put(
+        '/account/updateProfile',
+        data: {
+          "firstName": firstName,
+          "lastName": lastName,
+          "email": email,
+          if (phone != null && phone.isNotEmpty) "phone": phone,
+        },
+        options: Options(headers: headers),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Ошибка обновления профиля. Код: ${response.statusCode}');
+      }
+
+      return response.data ?? {};
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        throw Exception(
+            'Превышено время ожидания. Проверьте подключение к интернету.');
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+            'Ошибка подключения к серверу. Проверьте интернет-соединение.');
+      } else if (e.response?.statusCode == 401) {
+        throw Exception('Требуется авторизация для обновления профиля.');
+      } else if (e.response?.statusCode == 400) {
+        throw Exception('Неверные данные для обновления профиля.');
+      } else {
+        throw Exception('Ошибка при обновлении профиля: ${e.message}');
+      }
+    }
+  }
+
+  /// Получение данных профиля пользователя
+  /// GET /account/profile или GET /account/getProfile
+  Future<Map<String, dynamic>> getProfile() async {
+    try {
+      // Получаем токен из хранилища
+      final box = GetStorage();
+      final token = box.read<String>('token');
+      
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await _dio.get(
+        '/account/profile',
+        options: Options(headers: headers),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка получения профиля. Код: ${response.statusCode}');
+      }
+
+      return response.data ?? {};
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        throw Exception(
+            'Превышено время ожидания. Проверьте подключение к интернету.');
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+            'Ошибка подключения к серверу. Проверьте интернет-соединение.');
+      } else if (e.response?.statusCode == 401) {
+        throw Exception('Требуется авторизация для получения профиля.');
+      } else if (e.response?.statusCode == 404) {
+        throw Exception('Профиль не найден.');
+      } else {
+        throw Exception('Ошибка при получении профиля: ${e.message}');
+      }
     }
   }
 
@@ -65,13 +214,29 @@ class AuthRepository {
       final response = await _dio.post(
         '/account/forgotPassword',
         data: {"email": email},
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
       );
-      if (response.statusCode != 200) {
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Сервер вернул код ${response.statusCode}');
       }
     } on DioException catch (e) {
-      throw Exception(
-          'Ошибка при запросе /account/forgotPassword: ${e.message}');
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        throw Exception(
+            'Превышено время ожидания. Проверьте подключение к интернету.');
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+            'Ошибка подключения к серверу. Проверьте интернет-соединение.');
+      } else {
+        throw Exception('Ошибка при запросе сброса пароля: ${e.message}');
+      }
     }
   }
 
@@ -234,26 +399,23 @@ class AuthRepository {
 
 class ProductRepository {
   final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'http://80.90.191.66',
-    connectTimeout: Duration(seconds: 10),
-    receiveTimeout: Duration(seconds: 10),
-    sendTimeout: Duration(seconds: 10),
+    baseUrl: API_BASE_URL,
+    connectTimeout: Duration(seconds: 30),
+    receiveTimeout: Duration(seconds: 30),
+    sendTimeout: Duration(seconds: 30),
   ));
 
   /// Получить список всех товаров
   Future<List<ProductModel>> getProducts() async {
     try {
-      print('Запрос товаров с URL: http://80.90.191.66/order/getproducts');
-
       // Получаем токен из AuthController
       final authController = Get.find<AuthController>();
       final token = authController.getToken();
 
-      print('Токен авторизации: ${token != null ? "есть" : "отсутствует"}');
-
       // Добавляем заголовки для аутентификации
       final headers = <String, String>{
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       };
 
       // Добавляем токен, если он есть
@@ -266,49 +428,35 @@ class ProductRepository {
         options: Options(headers: headers),
       );
 
-      print('Получен ответ: ${response.statusCode}');
-      print('Данные ответа: ${response.data}');
-
       if (response.statusCode == 200) {
         if (response.data is List) {
           final products = (response.data as List)
               .map((item) => ProductModel.fromJson(item))
               .toList();
-          print('Успешно получено товаров: ${products.length}');
           return products;
         } else {
-          print(
-              'Ошибка: response.data не является списком: ${response.data.runtimeType}');
           throw Exception('Неверный формат данных от сервера');
         }
       } else {
-        print('Ошибка HTTP: ${response.statusCode}');
         throw Exception(
             'Ошибка получения списка товаров. Код: ${response.statusCode}');
       }
     } on DioException catch (e) {
-      print('Ошибка DioException: ${e.message}');
-      print('Тип ошибки: ${e.type}');
-      print('Код ошибки: ${e.response?.statusCode}');
-
-      switch (e.type) {
-        case DioExceptionType.connectionTimeout:
-        case DioExceptionType.sendTimeout:
-        case DioExceptionType.receiveTimeout:
-          throw Exception('Таймаут соединения с сервером');
-        case DioExceptionType.connectionError:
-          throw Exception('Ошибка подключения к серверу');
-        case DioExceptionType.badResponse:
-          if (e.response?.statusCode == 401) {
-            throw Exception(
-                'Требуется авторизация для доступа к товарам. Пожалуйста, войдите в систему.');
-          }
-          throw Exception('Ошибка сервера: ${e.response?.statusCode}');
-        default:
-          throw Exception('Ошибка сети: ${e.message}');
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        throw Exception(
+            'Превышено время ожидания. Проверьте подключение к интернету.');
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+            'Ошибка подключения к серверу. Проверьте интернет-соединение.');
+      } else if (e.response?.statusCode == 401) {
+        throw Exception(
+            'Требуется авторизация для доступа к товарам. Пожалуйста, войдите в систему.');
+      } else {
+        throw Exception('Ошибка сети: ${e.message}');
       }
     } catch (e) {
-      print('Неожиданная ошибка: $e');
       throw Exception('Неожиданная ошибка: $e');
     }
   }
@@ -316,18 +464,15 @@ class ProductRepository {
   /// Получить товар по ID
   Future<ProductModel> getProductById(int productId) async {
     try {
-      print('Запрос товара с ID: $productId');
-
       final response = await _dio.get(
         '/order/getproductid/$productId',
         options: Options(
           headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
           },
         ),
       );
-      print('Получен ответ: ${response.statusCode}');
-      print('Данные ответа: ${response.data}');
 
       if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
         return ProductModel.fromJson(response.data);
@@ -335,8 +480,17 @@ class ProductRepository {
         throw Exception('Ошибка получения товара. Код: ${response.statusCode}');
       }
     } on DioException catch (e) {
-      print('Ошибка DioException при получении товара: ${e.message}');
-      throw Exception('Ошибка при получении товара: ${e.message}');
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        throw Exception(
+            'Превышено время ожидания. Проверьте подключение к интернету.');
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+            'Ошибка подключения к серверу. Проверьте интернет-соединение.');
+      } else {
+        throw Exception('Ошибка при получении товара: ${e.message}');
+      }
     }
   }
 }

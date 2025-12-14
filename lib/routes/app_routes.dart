@@ -7,8 +7,8 @@ import '../features/auth/views/registration_screen.dart'; // Экран реги
 import '../features/auth/views/forgot_password_screen.dart'; // Экран восстановления пароля
 import '../features/home/views/main_screen.dart'; // Главная страница приложения
 import '../features/onboarding/views/onboarding_screen.dart'; // Страницы онбординга
-import '../features/orders/views/order_list_screen.dart';
 import '../features/orders/views/delivery_status_screen.dart';
+import '../features/orders/views/delivery_completed_screen.dart';
 import '../features/profile/views/delivery_point_screen.dart';
 import '../features/profile/views/edit_profile_screen.dart';
 import '../features/profile/views/profile_screen.dart';
@@ -19,8 +19,8 @@ import '../features/seller/views/seller_order_completed_screen.dart';
 import '../features/seller/views/seller_pickup_location_screen.dart';
 import '../features/tech/views/tech_pickup_location_screen.dart';
 import '../features/tech/views/tech_delivery_status_screen.dart';
-import '../data/models/order_model.dart';
 import '../features/tech/views/tech_delivery_completed_screen.dart';
+import '../features/tech/views/tech_autopilot_pick_screen.dart';
 
 class AppRoutes {
   static const String login = '/login'; // Маршрут для экрана авторизации
@@ -33,10 +33,10 @@ class AppRoutes {
   static const String profileEdit = '/edit-profile'; // Редактирование профиля
   static const String deliveryPoint = '/delivery-point'; // Точка доставки
   static const String deliveryStatus = '/delivery-status'; // Статус доставки
+  static const String deliveryCompleted =
+      '/delivery-completed'; // Завершение доставки
   static const String notFound =
       '/not-found'; // Обработчик неизвестных маршрутов
-  static const String deliveryCompleted =
-      '/delivery-completed'; // Заказ доставлен
   static const String sellerHome = '/seller-home'; // Продавецкий экран
   static const String techHome = '/tech-home'; // Маршрут для экрана техника
   static const String sellerOrderStatus =
@@ -50,6 +50,7 @@ class AppRoutes {
   static const String techDeliveryStatus =
       '/tech-delivery-status'; // Статус отправки заказа для техника
   static const String techDeliveryCompleted = '/tech-delivery-completed';
+  static const String techAutopilotPick = '/tech-autopilot-pick';
 
   static final List<GetPage> pages = [
     GetPage(name: login, page: () => LoginScreen()),
@@ -83,5 +84,6 @@ class AppRoutes {
       name: techDeliveryCompleted,
       page: () => TechDeliveryCompletedScreen(),
     ),
+    GetPage(name: techAutopilotPick, page: () => TechAutopilotPickScreen()),
   ];
 }

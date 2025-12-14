@@ -1,12 +1,10 @@
 import "dart:convert";
 import "package:flutter/material.dart";
 import "package:flutter_map/flutter_map.dart";
-import "package:get_storage/get_storage.dart";
 import "package:latlong2/latlong.dart";
 import "package:get/get.dart";
 import "package:location/location.dart";
 import "package:http/http.dart" as http;
-import "../../../common/styles/colors.dart";
 import "../../../data/models/order_model.dart";
 
 /// Экран выбора точки отправки заказа для продавца
@@ -37,6 +35,8 @@ class _SellerPickupLocationScreenState
   LatLng _defaultPosition = LatLng(59.9343, 30.3351);
   Marker? _pickupMarker;
   bool _isLoading = false;
+  // Тип карты: true - спутниковая, false - обычная
+  bool _isSatelliteView = false;
 
   @override
   void initState() {
@@ -57,15 +57,18 @@ class _SellerPickupLocationScreenState
       PermissionStatus permissionGranted = await _location.hasPermission();
       if (permissionGranted == PermissionStatus.denied) {
         permissionGranted = await _location.requestPermission();
-        if (permissionGranted != PermissionStatus.granted) return;
+        if (permissionGranted != PermissionStatus.granted &&
+            permissionGranted != PermissionStatus.grantedLimited) return;
       }
 
       LocationData locationData = await _location.getLocation();
+      final newPosition =
+          LatLng(locationData.latitude!, locationData.longitude!);
+
       setState(() {
-        _currentPosition =
-            LatLng(locationData.latitude!, locationData.longitude!);
+        _currentPosition = newPosition;
         _pickupMarker = Marker(
-          point: _currentPosition!,
+          point: newPosition,
           child: Icon(
             Icons.store,
             color: Colors.orange,
@@ -73,8 +76,17 @@ class _SellerPickupLocationScreenState
           ),
         );
       });
+
+      // Перемещаем карту к текущему местоположению
+      _mapController.move(newPosition, 16.0);
     } catch (e) {
       print("Ошибка получения местоположения: $e");
+      Get.snackbar(
+        'Ошибка',
+        'Не удалось определить местоположение. Проверьте разрешения GPS.',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     } finally {
       setState(() => _isLoading = false);
     }
@@ -136,8 +148,8 @@ class _SellerPickupLocationScreenState
   void _confirmPickupLocation() {
     if (_pickupMarker == null) {
       Get.snackbar(
-        "Ошибка",
-        "Выберите точку отправки на карте",
+        'Ошибка',
+        'Пожалуйста, выберите точку отправки на карте',
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
@@ -146,20 +158,39 @@ class _SellerPickupLocationScreenState
 
     Get.dialog(
       AlertDialog(
-        title: Text("Подтвердить точку отправки"),
-        content: Text("Вы уверены, что хотите отправить заказ с этой точки?"),
+        title: Text("Подтвердить точку отправки",
+            style: TextStyle(color: Colors.black)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Вы уверены, что хотите отправить заказ с этой точки?",
+                style: TextStyle(color: Colors.black)),
+            SizedBox(height: 8),
+            Text(
+              "Координаты: ${_pickupMarker!.point.latitude.toStringAsFixed(6)}, ${_pickupMarker!.point.longitude.toStringAsFixed(6)}",
+              style: TextStyle(fontSize: 12, color: Colors.black),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
-            child: Text("Отмена"),
+            child: Text("Отмена", style: TextStyle(color: Colors.black)),
           ),
           ElevatedButton(
             onPressed: () {
               Get.back();
               // Переход к экрану статусов обработки заказа
+              print(
+                  '✅ Переход на экран статуса заказа с данными: ${widget.orderData.id}');
               Get.toNamed("/seller-order-status", arguments: widget.orderData);
             },
             child: Text("Подтвердить"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
           ),
         ],
       ),
@@ -184,7 +215,9 @@ class _SellerPickupLocationScreenState
             ),
             children: [
               TileLayer(
-                urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                urlTemplate: _isSatelliteView
+                    ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                    : "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 userAgentPackageName: "com.example.kollibry",
               ),
               if (_pickupMarker != null) MarkerLayer(markers: [_pickupMarker!]),
@@ -217,17 +250,59 @@ class _SellerPickupLocationScreenState
               ),
             ),
           ),
+
+          /// Кнопки управления картой
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                /// Кнопка переключения вида карты
+                FloatingActionButton(
+                  backgroundColor: Colors.orange,
+                  onPressed: () {
+                    setState(() {
+                      _isSatelliteView = !_isSatelliteView;
+                    });
+                  },
+                  heroTag: 'map_type',
+                  child: Icon(
+                    _isSatelliteView ? Icons.map : Icons.satellite,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 10),
+
+                /// Кнопка для получения текущего местоположения
+                FloatingActionButton(
+                  backgroundColor: Colors.orange,
+                  onPressed: _getCurrentLocation,
+                  heroTag: 'my_location',
+                  child: const Icon(Icons.my_location, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+
+          /// Кнопка "Подтвердить" отдельно от кнопок управления
+          if (_pickupMarker != null)
+            Positioned(
+              bottom: 20,
+              left: 20,
+              right: 20,
+              child: FloatingActionButton.extended(
+                onPressed: _confirmPickupLocation,
+                backgroundColor: Colors.orange,
+                icon: Icon(Icons.check),
+                label: Text("Подтвердить"),
+              ),
+            ),
           if (_isLoading)
             Center(
               child: CircularProgressIndicator(),
             ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _confirmPickupLocation,
-        backgroundColor: Colors.orange,
-        icon: Icon(Icons.check),
-        label: Text("Подтвердить"),
       ),
     );
   }

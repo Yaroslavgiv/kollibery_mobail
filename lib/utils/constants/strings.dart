@@ -47,6 +47,7 @@ class Strings {
 
   static const String home = "Главная";
   static const String favorites = "Избранное";
+  static const String orderHistory = "История заказов";
   static const String cart = "Корзина";
   static const String profile = "Профиль";
   static const String searchHint = "Искать товары...";

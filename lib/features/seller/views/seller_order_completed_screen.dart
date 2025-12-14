@@ -1,12 +1,48 @@
 import "package:flutter/material.dart";
 import "package:get/get.dart";
-import "../../../data/models/order_model.dart";
 import "../../../data/sources/api/flight_api.dart";
+import "../../../data/models/order_model.dart";
+import "../../../data/repositories/order_repository.dart";
+import "../../../common/widgets/swipe_confirm_dialog.dart";
 
-class SellerOrderCompletedScreen extends StatelessWidget {
+class SellerOrderCompletedScreen extends StatefulWidget {
+  @override
+  State<SellerOrderCompletedScreen> createState() =>
+      _SellerOrderCompletedScreenState();
+}
+
+class _SellerOrderCompletedScreenState
+    extends State<SellerOrderCompletedScreen> {
+  bool isDroneOpen = false;
+  final OrderRepository _orderRepository = OrderRepository();
+  OrderModel? _orderData;
+  bool _isSending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Получаем заказ из аргументов
+    final arguments = Get.arguments;
+    if (arguments != null && arguments is OrderModel) {
+      _orderData = arguments;
+      print('✅ SellerOrderCompletedScreen: Получен заказ ${_orderData?.id}');
+    } else {
+      print(
+          '⚠️ SellerOrderCompletedScreen: Аргументы не переданы или неверного типа');
+      // Показываем предупреждение пользователю
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.snackbar(
+          'Предупреждение',
+          'Данные заказа не найдены',
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+        );
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final orderData = Get.arguments as OrderModel?;
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
@@ -21,56 +57,161 @@ class SellerOrderCompletedScreen extends StatelessWidget {
           child: Column(
             children: [
               SizedBox(
-                height: screenHeight * 0.3,
+                height: screenHeight * 0.25,
                 width: double.infinity,
                 child: Image.asset(
                   'assets/images/drone/delivery.gif',
                   fit: BoxFit.cover,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               Text(
                 'Дрон готов доставить товар!',
                 style: Theme.of(context).textTheme.titleLarge,
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 24),
+              // Управление грузовым отсеком с индикатором
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDroneOpen ? Colors.green : Colors.grey.shade400,
+                    width: 2,
+                  ),
+                  color:
+                      isDroneOpen ? Colors.green.shade50 : Colors.grey.shade50,
+                ),
+                child: Column(
+                  children: [
+                    // Индикатор состояния
+                    Container(
+                      padding:
+                          EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color:
+                            isDroneOpen ? Colors.green : Colors.grey.shade300,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(10),
+                          topRight: Radius.circular(10),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isDroneOpen ? Icons.lock_open : Icons.lock,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            'Грузовой отсек: ${isDroneOpen ? "ОТКРЫТ" : "ЗАКРЫТ"}',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Кнопка управления
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            try {
+                              // Вызываем API для открытия/закрытия бокса
+                              final response =
+                                  await FlightApi.openDroneBox(!isDroneOpen);
+
+                              // Выводим ответ сервера в консоль
+                              print('Ответ сервера при управлении боксом:');
+                              print('Status Code: ${response.statusCode}');
+                              print('Response Body: ${response.body}');
+
+                              if (response.statusCode == 200) {
+                                final responseBody =
+                                    response.body.toLowerCase();
+                                if (responseBody.contains('успех') ||
+                                    responseBody.contains('success')) {
+                                  print(
+                                      '✅ Сервер вернул успешный ответ: ${response.body}');
+                                }
+
+                                setState(() {
+                                  isDroneOpen = !isDroneOpen;
+                                });
+                              } else {
+                                print(
+                                    '❌ Ошибка при управлении боксом: ${response.statusCode} - ${response.body}');
+                              }
+                            } catch (e) {
+                              print('❌ Исключение при управлении боксом: $e');
+                            }
+                          },
+                          icon: Icon(
+                            isDroneOpen
+                                ? Icons.arrow_upward
+                                : Icons.arrow_downward,
+                            size: 28,
+                          ),
+                          label: Text(
+                            isDroneOpen ? 'Закрыть отсек' : 'Открыть отсек',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.w600),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 18),
+                            backgroundColor: isDroneOpen
+                                ? Colors.orange.shade600
+                                : Colors.green.shade600,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const Spacer(),
-              // Кнопки управления
-              Column(
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      _openCargoBay();
-                    },
-                    child: Text('Открыть грузовой отсек'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                    ),
+              // Кнопка отправить дрон
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isSending ? null : _sendDroneBack,
+                  icon: _isSending
+                      ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Icon(Icons.flight_takeoff, size: 28),
+                  label: Text(
+                    _isSending ? 'Отправка...' : 'Отправить дрон к покупателю',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      _closeCargoBay();
-                    },
-                    child: Text('Закрыть грузовой отсек'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    elevation: 3,
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      _sendDroneBack();
-                    },
-                    child: Text('Отправить дрон'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
@@ -79,70 +220,56 @@ class SellerOrderCompletedScreen extends StatelessWidget {
     );
   }
 
-  void _openCargoBay() async {
-    try {
-      final response = await FlightApi.openDroneBox(true);
-      if (response.statusCode == 200) {
-        Get.snackbar(
-          "Грузовой отсек",
-          "Грузовой отсек открыт",
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
-      } else {
-        Get.snackbar(
-          "Ошибка",
-          "Не удалось открыть грузовой отсек",
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-      }
-    } catch (e) {
-      Get.snackbar(
-        "Ошибка",
-        "Ошибка сети: $e",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    }
-  }
-
-  void _closeCargoBay() async {
-    try {
-      final response = await FlightApi.openDroneBox(false);
-      if (response.statusCode == 200) {
-        Get.snackbar(
-          "Грузовой отсек",
-          "Грузовой отсек закрыт",
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-        );
-      } else {
-        Get.snackbar(
-          "Ошибка",
-          "Не удалось закрыть грузовой отсек",
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-      }
-    } catch (e) {
-      Get.snackbar(
-        "Ошибка",
-        "Ошибка сети: $e",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    }
-  }
-
   void _sendDroneBack() {
-    Get.snackbar(
-      "Дрон отправлен",
-      "Дрон возвращается на базу",
-      backgroundColor: Colors.blue,
-      colorText: Colors.white,
+    if (_orderData == null) {
+      return;
+    }
+
+    SwipeConfirmDialog.show(
+      context: context,
+      title: 'Отправить дрон',
+      message:
+          'Вы уверены, что хотите отправить дрон к покупателю? Заказ будет перемещен в историю.',
+      confirmText: 'Отправить',
+      confirmColor: Colors.blue.shade700,
+      icon: Icons.flight_takeoff,
+      onConfirm: () async {
+        setState(() {
+          _isSending = true;
+        });
+
+        try {
+          // Сначала обновляем статус заказа на "delivered" (доставлен)
+          await _orderRepository.updateOrderStatus(
+            _orderData!.id.toString(),
+            'delivered',
+          );
+
+          // Затем удаляем заказ с сервера
+          await _orderRepository.deleteOrder(
+            _orderData!.id.toString(),
+          );
+
+          // Переход на главный экран после отправки дрона покупателю
+          Get.offAllNamed('/home');
+        } catch (e) {
+          print('❌ Ошибка при отправке дрона: $e');
+          Get.snackbar(
+            'Ошибка',
+            'Ошибка при отправке дрона: $e',
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+          // Переход на главный экран даже при ошибке
+          Get.offAllNamed('/home');
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isSending = false;
+            });
+          }
+        }
+      },
     );
-    // Возвращаемся к списку заказов
-    Get.offAllNamed('/seller-home');
   }
 }

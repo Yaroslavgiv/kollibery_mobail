@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../common/themes/theme.dart';
-import '../../../utils/device/screen_util.dart';
+import '../../../utils/helpers/hex_image.dart';
 import '../../orders/views/order_details_screen.dart';
 import '../controllers/cart_controller.dart';
 
@@ -12,9 +12,18 @@ class CartScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Корзина"),
+        title: Text('Корзина'),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.delete_sweep),
+            onPressed: () {
+              cartController.clearCart();
+            },
+          ),
+        ],
       ),
       body: Obx(() {
         if (cartController.cartItems.isEmpty) {
@@ -22,19 +31,26 @@ class CartScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.shopping_cart_outlined,
-                    size: 64, color: Colors.grey),
+                Icon(
+                  Icons.shopping_cart_outlined,
+                  size: 80,
+                  color: Colors.grey[400],
+                ),
                 SizedBox(height: 16),
                 Text(
-                  "Корзина пуста",
-                  style: Theme.of(context).textTheme.headlineSmall,
+                  'Корзина пуста',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey[600],
+                  ),
                 ),
                 SizedBox(height: 8),
                 Text(
-                  "Добавьте товары для оформления заказа",
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey,
-                      ),
+                  'Добавьте товары для покупки',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                  ),
                 ),
               ],
             ),
@@ -49,124 +65,178 @@ class CartScreen extends StatelessWidget {
                   itemCount: cartController.cartItems.length,
                   itemBuilder: (context, index) {
                     final product = cartController.cartItems[index];
-                    return ListTile(
-                      leading: Image.asset(
-                        product['image'],
-                        width: ScreenUtil.adaptiveWidth(50),
-                        height: ScreenUtil.adaptiveHeight(50),
+
+                    // Используем универсальный провайдер изображений как в карточках товаров
+                    final imageProvider =
+                        HexImage.resolveImageProvider(product['image']) ??
+                            const AssetImage('assets/logos/Logo_black.png');
+
+                    return Card(
+                      margin: EdgeInsets.only(bottom: 12),
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      title: Text(
-                        product['name'],
-                        style: TAppTheme.lightTheme.textTheme.titleMedium,
-                      ),
-                      subtitle: Text(
-                        "${product['price']} ₽",
-                        style: TAppTheme.lightTheme.textTheme.labelMedium,
-                      ),
-                      onTap: () {
-                        Get.to(() => OrderDetailsScreen(
-                              imageUrl: product['image'],
-                              name: product['name'],
-                              description: product['description'],
-                              price: product['price'],
-                              productId: product['id'] ?? 1,
-                            ));
-                      },
-                      trailing: IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                          cartController.removeFromCart(product);
+                      child: InkWell(
+                        onTap: () {
+                          Get.to(() => OrderDetailsScreen(
+                                imageUrl: product['image'],
+                                name: product['name'],
+                                description: product['description'],
+                                price: product['price'],
+                                productId: product['id'] ?? 1,
+                              ));
                         },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              // Изображение товара
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: Colors.grey[100],
+                                  image: DecorationImage(
+                                    image: imageProvider,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              // Информация о товаре
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      product['name'],
+                                      style: TAppTheme
+                                          .lightTheme.textTheme.titleMedium
+                                          ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      "${product['price']} ₽",
+                                      style: TAppTheme
+                                          .lightTheme.textTheme.labelMedium
+                                          ?.copyWith(
+                                        color: Colors.blue,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    if (product['description'] != null)
+                                      Text(
+                                        product['description'],
+                                        style: TAppTheme
+                                            .lightTheme.textTheme.bodySmall
+                                            ?.copyWith(
+                                          color: Colors.grey[600],
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              // Кнопка удаления
+                              IconButton(
+                                icon: Icon(Icons.delete, color: Colors.red),
+                                onPressed: () {
+                                  cartController.removeFromCart(product);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     );
                   },
                 ),
               ),
             ),
-            // Кнопка оформления заказа
+            // Итого и кнопка заказа
             Container(
-              padding: EdgeInsets.all(18.0),
-              child: ElevatedButton(
-                onPressed: () {
-                  _showOrderConfirmation();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  minimumSize: Size(double.infinity, 50),
-                ),
-                child: Text(
-                  "Оформить заказ (${cartController.cartItems.length} товар${_getPluralForm(cartController.cartItems.length)})",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: Offset(0, -3),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Итого:',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${cartController.getTotalPrice()} ₽',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (cartController.cartItems.isNotEmpty) {
+                          // Переходим к экрану выбора точки доставки с данными корзины
+                          Get.toNamed('/delivery-point', arguments: {
+                            'role': 'buyer',
+                            'cartItems': cartController.cartItems,
+                            'totalPrice': cartController.getTotalPrice(),
+                            'fromCart': true,
+                          });
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Оформить заказ',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         );
       }),
     );
-  }
-
-  void _showOrderConfirmation() {
-    showDialog(
-      context: Get.context!,
-      builder: (context) => AlertDialog(
-        title: Text("Подтверждение заказа"),
-        content: Text(
-            "Вы хотите оформить заказ на ${cartController.cartItems.length} товар${_getPluralForm(cartController.cartItems.length)}?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Отмена"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _proceedToOrder();
-            },
-            child: Text("Оформить"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _proceedToOrder() {
-    // Передаем данные о товарах из корзины
-    final cartItems = cartController.cartItems;
-    if (cartItems.isNotEmpty) {
-      // Берем первый товар для примера (в реальном приложении можно обработать все)
-      final product = cartItems.first;
-      final productData = {
-        'id': product['id'] ?? 1,
-        'name': product['name'],
-        'description': product['description'],
-        'price': product['price'],
-        'image': product['image'],
-        'quantity': cartItems.length,
-        'fromCart': true,
-      };
-
-      Get.toNamed('/delivery-point', arguments: {
-        'role': 'buyer', // Всегда как покупатель при заказе товара
-        'productData': productData,
-      });
-    }
-  }
-
-  String _getPluralForm(int count) {
-    if (count % 10 == 1 && count % 100 != 11) {
-      return '';
-    } else if (count % 10 >= 2 &&
-        count % 10 <= 4 &&
-        (count % 100 < 10 || count % 100 >= 20)) {
-      return 'а';
-    } else {
-      return 'ов';
-    }
   }
 }

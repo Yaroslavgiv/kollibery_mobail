@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import '../../../data/models/order_model.dart';
 import '../../../data/repositories/order_repository.dart';
 import 'package:flutter/material.dart';
+import '../../../common/widgets/swipe_confirm_dialog.dart';
 
 class TechDeliveryStatusController extends GetxController {
   final OrderRepository _orderRepository = OrderRepository();
@@ -52,7 +53,7 @@ class TechDeliveryStatusController extends GetxController {
           children: [
             Text(
               "Дрон доставил товар. Выберите действие:",
-              style: TextStyle(color: Colors.black87),
+              style: TextStyle(color: Colors.black),
             ),
             SizedBox(height: 20),
             Row(
@@ -61,7 +62,16 @@ class TechDeliveryStatusController extends GetxController {
                 ElevatedButton(
                   onPressed: () {
                     Get.back();
-                    _openCargoBay();
+                    SwipeConfirmDialog.show(
+                      context: Get.context!,
+                      title: 'Открыть грузовой отсек',
+                      message:
+                          'Вы уверены, что хотите открыть грузовой отсек дрона?',
+                      confirmText: 'Открыть',
+                      confirmColor: Colors.green,
+                      icon: Icons.lock_open,
+                      onConfirm: _openCargoBay,
+                    );
                   },
                   child: Text("Открыть грузовой отсек"),
                   style: ElevatedButton.styleFrom(
@@ -72,7 +82,16 @@ class TechDeliveryStatusController extends GetxController {
                 ElevatedButton(
                   onPressed: () {
                     Get.back();
-                    _closeCargoBay();
+                    SwipeConfirmDialog.show(
+                      context: Get.context!,
+                      title: 'Закрыть грузовой отсек',
+                      message:
+                          'Вы уверены, что хотите закрыть грузовой отсек дрона?',
+                      confirmText: 'Закрыть',
+                      confirmColor: Colors.orange,
+                      icon: Icons.lock,
+                      onConfirm: _closeCargoBay,
+                    );
                   },
                   child: Text("Закрыть грузовой отсек"),
                   style: ElevatedButton.styleFrom(
@@ -86,7 +105,15 @@ class TechDeliveryStatusController extends GetxController {
             ElevatedButton(
               onPressed: () {
                 Get.back();
-                _sendDroneBack();
+                SwipeConfirmDialog.show(
+                  context: Get.context!,
+                  title: 'Отправить дрон',
+                  message: 'Вы уверены, что хотите отправить дрон на базу?',
+                  confirmText: 'Отправить',
+                  confirmColor: Colors.blue,
+                  icon: Icons.flight_takeoff,
+                  onConfirm: _sendDroneBack,
+                );
               },
               child: Text("Отправить дрон"),
               style: ElevatedButton.styleFrom(
@@ -101,30 +128,14 @@ class TechDeliveryStatusController extends GetxController {
   }
 
   void _openCargoBay() {
-    Get.snackbar(
-      "Грузовой отсек",
-      "Грузовой отсек открыт",
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-    );
+    // Грузовой отсек открыт
   }
 
   void _closeCargoBay() {
-    Get.snackbar(
-      "Грузовой отсек",
-      "Грузовой отсек закрыт",
-      backgroundColor: Colors.orange,
-      colorText: Colors.white,
-    );
+    // Грузовой отсек закрыт
   }
 
   void _sendDroneBack() {
-    Get.snackbar(
-      "Дрон отправлен",
-      "Дрон возвращается на базу",
-      backgroundColor: Colors.blue,
-      colorText: Colors.white,
-    );
     // Можно добавить переход на главный экран или обновление списка заказов
     Get.back(); // Возвращаемся к списку заказов
   }
@@ -132,6 +143,11 @@ class TechDeliveryStatusController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    // Получаем заказ из аргументов при инициализации
+    final arguments = Get.arguments;
+    if (arguments != null && arguments is OrderModel) {
+      selectedOrder.value = arguments;
+    }
     fetchTechOrders();
     // Запускаем автоматическое обновление статусов
     _startAutomaticStatusUpdate();
@@ -151,7 +167,8 @@ class TechDeliveryStatusController extends GetxController {
     // Переход на экран итогов через 5 секунд после второй галочки (15 + 5 = 20 секунд)
     Future.delayed(Duration(seconds: 20), () {
       // Переходим на отдельную страницу завершения доставки
-      Get.toNamed('/tech-delivery-completed');
+      // Передаем заказ в аргументах, если он был выбран
+      Get.toNamed('/tech-delivery-completed', arguments: selectedOrder.value);
     });
   }
 
@@ -176,7 +193,6 @@ class TechDeliveryStatusController extends GetxController {
       // Временно используем заглушку, пока не будет реализован API
       print('Обновление статуса заказа $orderId на $status');
       await fetchTechOrders(); // Обновляем список
-      Get.snackbar('Успех', 'Статус заказа обновлен');
     } catch (e) {
       Get.snackbar('Ошибка', 'Не удалось обновить статус: $e');
     }
