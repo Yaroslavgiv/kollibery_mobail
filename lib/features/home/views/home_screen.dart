@@ -79,16 +79,16 @@ class HomePage extends StatelessWidget {
                 SizedBox(
                     height:
                         ScreenUtil.adaptiveHeight(20)), // Отступ после поиска
-                // Баннеры
-                BannerCarousel(banners: banners),
-                SizedBox(
-                    height:
-                        ScreenUtil.adaptiveHeight(20)), // Отступ после баннеров
-                // Категории
-                CategoryList(categories: categories),
-                SizedBox(
-                    height: ScreenUtil.adaptiveHeight(
-                        25)), // Отступ после категорий
+                // Баннеры (временно отключено)
+                // BannerCarousel(banners: banners),
+                // SizedBox(
+                //     height:
+                //         ScreenUtil.adaptiveHeight(20)), // Отступ после баннеров
+                // Категории (временно отключено)
+                // CategoryList(categories: categories),
+                // SizedBox(
+                //     height: ScreenUtil.adaptiveHeight(
+                //         25)), // Отступ после категорий
                 // Товары
                 FutureBuilder<List<ProductModel>>(
                   future: productRepository.getProducts(),

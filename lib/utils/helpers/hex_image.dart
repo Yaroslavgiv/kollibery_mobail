@@ -53,10 +53,20 @@ class HexImage {
     final v = _normalize(value);
     if (v.isEmpty) return false;
     if (v.contains(' ')) return false;
+    // Проверяем известные префиксы base64 изображений
     if (v.startsWith('/9j/') || v.startsWith('iVBOR') || v.startsWith('R0lG'))
       return true;
+    // Проверяем, что строка содержит только допустимые base64 символы
     final b64Reg = RegExp(r'^[A-Za-z0-9+/=]+$');
-    return b64Reg.hasMatch(v) && v.length % 4 == 0;
+    if (!b64Reg.hasMatch(v)) return false;
+    // Для очень длинных строк (изображения) не требуем точного деления на 4,
+    // так как могут быть проблемы с форматированием или обрезкой
+    if (v.length > 100) {
+      // Для длинных строк считаем base64, если содержит только допустимые символы
+      return true;
+    }
+    // Для коротких строк проверяем точное деление на 4
+    return v.length % 4 == 0;
   }
 
   static Uint8List? tryDecodeBase64(String value) {

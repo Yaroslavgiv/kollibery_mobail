@@ -22,13 +22,13 @@ class App extends StatelessWidget {
 
     // Если пользователь не авторизован, идём на логин.
     // Если авторизован и роль - 'seller', идём на SellerMainScreen.
-    // Если роль - 'tech', идём на TechMainScreen.
+    // Если роль - 'technician', идём на TechMainScreen.
     // Иначе - на обычный MainScreen.
     final initialRoute = !isLoggedIn
         ? AppRoutes.login
         : (role == 'seller'
             ? AppRoutes.sellerHome
-            : role == 'tech'
+            : role == 'technician'
                 ? AppRoutes.techHome
                 : AppRoutes.home);
 

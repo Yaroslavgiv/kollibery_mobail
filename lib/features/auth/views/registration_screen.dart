@@ -143,7 +143,7 @@ class RegistrationScreen extends StatelessWidget {
                           child: CustomButton(
                             text: 'Техник',
                             onPressed: () {
-                              authController.roleController.text = 'tech';
+                              authController.roleController.text = 'technician';
                               authController.register();
                             },
                           ),

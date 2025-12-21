@@ -5,6 +5,7 @@ import '../../auth/controllers/auth_controller.dart';
 import 'tech_products_screen.dart';
 import 'tech_orders_screen.dart';
 import 'tech_dronebox_screen.dart';
+import '../../../common/widgets/swipe_confirm_dialog.dart';
 
 class TechMainScreen extends StatefulWidget {
   @override
@@ -32,45 +33,21 @@ class _TechMainScreenState extends State<TechMainScreen> {
       case 'tech':
         return 'Техник';
       default:
-        return 'Пользователь';
+        return 'Техник';
     }
   }
 
   /// Показывает диалог подтверждения выхода
   void _showLogoutDialog() {
-    showDialog(
+    SwipeConfirmDialog.show(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            "Выход из аккаунта",
-            style: TextStyle(color: Colors.black),
-          ),
-          content: Text(
-            "Вы уверены, что хотите выйти из аккаунта?",
-            style: TextStyle(color: Colors.black),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                "Отмена",
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                authController.logout();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              child: Text("Выйти"),
-            ),
-          ],
-        );
+      title: "Выход из аккаунта",
+      message: "Вы уверены, что хотите выйти из аккаунта?",
+      confirmText: "Выйти",
+      confirmColor: Colors.red,
+      icon: Icons.logout,
+      onConfirm: () {
+        authController.logout();
       },
     );
   }
@@ -104,7 +81,7 @@ class _TechMainScreenState extends State<TechMainScreen> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_remote),
-            label: 'Проверка',
+            label: 'Дронбокс',
           ),
         ],
       ),

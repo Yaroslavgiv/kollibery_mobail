@@ -1,6 +1,4 @@
 import 'package:get/get.dart';
-import 'dart:async';
-import '../views/order_list_screen.dart';
 import '../../../data/models/order_model.dart';
 
 /// Контроллер состояния доставки для управления процессом выполнения заказа.
@@ -61,10 +59,12 @@ class DeliveryStatusController extends GetxController {
     Future.delayed(
       durations.reduce((a, b) => a + b), // Общая сумма всех задержек
       () {
-        if (Get.isRegistered<DeliveryStatusController>()) {
-          // Переход на экран завершения доставки с кнопками управления боксом
-          Get.offNamed('/delivery-completed', arguments: orderData.value);
-        }
+        // Сохраняем данные заказа перед переходом, чтобы они были доступны на следующем экране
+        final orderToPass = orderData.value;
+        
+        // Переход на экран завершения доставки с кнопками управления боксом
+        // Используем offNamed чтобы удалить текущий экран из стека навигации
+        Get.offNamed('/delivery-completed', arguments: orderToPass);
       },
     );
   }

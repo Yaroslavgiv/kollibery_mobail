@@ -1,6 +1,6 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 
 import '../../../../common/styles/colors.dart';
 import '../../../../common/styles/sizes.dart';
@@ -9,6 +9,7 @@ import '../../../../utils/device/screen_util.dart';
 import '../../../../utils/helpers/hex_image.dart';
 import '../controllers/product_card_controller.dart';
 import '../../../home/models/product_model.dart';
+import '../../../cart/controllers/cart_controller.dart';
 
 class ProductCardScreen extends StatelessWidget {
   final ProductModel product;
@@ -16,6 +17,8 @@ class ProductCardScreen extends StatelessWidget {
   ProductCardScreen({required this.product});
 
   final ProductCardController controller = Get.put(ProductCardController());
+  final CartController cartController = Get.put(CartController());
+  final GetStorage box = GetStorage();
 
   @override
   Widget build(BuildContext context) {
@@ -26,9 +29,14 @@ class ProductCardScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: KColors.backgroundLight,
       appBar: AppBar(
-        title:
-            Text(product.name, style: Theme.of(context).textTheme.titleLarge),
+        title: Text(
+          product.name,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: Colors.white,
+          ),
+        ),
         backgroundColor: KColors.primary,
+        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -55,7 +63,9 @@ class ProductCardScreen extends StatelessWidget {
               // Название товара
               Text(
                 product.name,
-                style: KTextTheme.darkTextTheme.headlineLarge,
+                style: KTextTheme.darkTextTheme.headlineLarge?.copyWith(
+                  color: Colors.black,
+                ),
               ),
               SizedBox(height: ScreenUtil.adaptiveHeight(10)),
 
@@ -74,51 +84,80 @@ class ProductCardScreen extends StatelessWidget {
               ),
               SizedBox(height: ScreenUtil.adaptiveHeight(30)),
 
-              // Кнопки "Добавить в корзину" и "Добавить в избранное"
-              // Row(
-              //   children: [
-              //     Expanded(
-              //       child: Obx(
-              //         () => ElevatedButton(
-              //           onPressed: () =>
-              //               controller.toggleCartStatus(product.toJson()),
-              //           style: ElevatedButton.styleFrom(
-              //             backgroundColor: KColors.primary,
-              //             padding: EdgeInsets.symmetric(
-              //                 vertical: ScreenUtil.adaptiveHeight(15),
-              //                 horizontal: ScreenUtil.adaptiveHeight(5)),
-              //           ),
-              //           child: Text(
-              //             controller.isInCart.value
-              //                 ? "Убрать из корзины"
-              //                 : "Добавить в корзину",
-              //             style: KTextTheme.darkTextTheme.bodyLarge,
-              //           ),
-              //         ),
-              //       ),
-              //     ),
-              //     SizedBox(width: ScreenUtil.adaptiveWidth(10)),
-              //     Expanded(
-              //       child: Obx(
-              //         () => OutlinedButton(
-              //           onPressed: controller.toggleFavoriteStatus,
-              //           style: OutlinedButton.styleFrom(
-              //             padding: EdgeInsets.symmetric(
-              //                 vertical: ScreenUtil.adaptiveHeight(8),
-              //                 horizontal: ScreenUtil.adaptiveHeight(5)),
-              //             side: BorderSide(color: KColors.primary),
-              //           ),
-              //           child: Text(
-              //             controller.isInFavorites.value
-              //                 ? "Убрать из избранного"
-              //                 : "Добавить в избранное",
-              //             style: KTextTheme.lightTextTheme.titleMedium,
-              //           ),
-              //         ),
-              //       ),
-              //     ),
-              //   ],
-              // ),
+              // Кнопки "Добавить в корзину" и "Оформить заказ" (только для покупателя)
+              // Проверяем роль пользователя
+              Builder(
+                builder: (context) {
+                  final role = box.read('role') ?? 'buyer';
+                  // Скрываем кнопки для продавца и техника
+                  if (role == 'seller' || role == 'technician' || role == 'tech') {
+                    return SizedBox.shrink(); // Не показываем кнопки
+                  }
+                  
+                  // Показываем кнопки только для покупателя
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            try {
+                              cartController.addToCart(product.toJson());
+                            } catch (e) {
+                              Get.snackbar(
+                                'Ошибка',
+                                'Не удалось добавить товар в корзину',
+                                backgroundColor: Colors.red,
+                                colorText: Colors.white,
+                                duration: Duration(seconds: 2),
+                              );
+                            }
+                          },
+                          icon: Icon(Icons.add_shopping_cart),
+                          label: Text("Добавить в корзину"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: KColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                                vertical: ScreenUtil.adaptiveHeight(15),
+                                horizontal: ScreenUtil.adaptiveHeight(5)),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: ScreenUtil.adaptiveWidth(10)),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            // Передаем данные о товаре в экран выбора точки доставки
+                            final productData = {
+                              'id': product.id,
+                              'name': product.name,
+                              'description': product.description,
+                              'price': product.price,
+                              'image': product.image,
+                              'quantity': 1,
+                              'fromCart': false,
+                            };
+
+                            Get.toNamed('/delivery-point', arguments: {
+                              'role': 'buyer',
+                              'productData': productData,
+                            });
+                          },
+                          icon: Icon(Icons.shopping_bag),
+                          label: Text("Оформить заказ"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: KColors.buttonDark,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                                vertical: ScreenUtil.adaptiveHeight(15),
+                                horizontal: ScreenUtil.adaptiveHeight(5)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -126,3 +165,5 @@ class ProductCardScreen extends StatelessWidget {
     );
   }
 }
+
+

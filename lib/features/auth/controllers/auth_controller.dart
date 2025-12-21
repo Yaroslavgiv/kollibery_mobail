@@ -15,57 +15,80 @@ class AuthController extends GetxController {
   final AuthRepository _authRepository = AuthRepository();
   final box = GetStorage();
 
+  // Добавляем флаг для отслеживания состояния загрузки
+  final RxBool isLoading = false.obs;
+
   /// Регистрация пользователя
   Future<void> register() async {
+    if (isLoading.value) return; // Предотвращаем множественные запросы
+
+    isLoading.value = true;
+
     final firstName = firstNameController.text.trim();
     final lastName = lastNameController.text.trim();
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
     final confirmPassword = confirmPasswordController.text.trim();
-    final role = roleController.text.trim(); // 'buyer' или 'seller'
+    final role =
+        roleController.text.trim(); // 'buyer' | 'seller' | 'technician'
 
     if (firstName.isEmpty ||
         lastName.isEmpty ||
         email.isEmpty ||
         password.isEmpty ||
         role.isEmpty) {
-      Get.snackbar('Ошибка', 'Заполните все поля и выберите роль');
+      isLoading.value = false;
       return;
     }
 
-    if (role != 'buyer' && role != 'seller' && role != 'tech') {
-      Get.snackbar('Ошибка', 'Выберите роль: покупатель, продавец или техник');
+    if (role != 'buyer' && role != 'seller' && role != 'technician') {
+      isLoading.value = false;
       return;
     }
 
     if (password != confirmPassword) {
-      Get.snackbar('Ошибка', 'Пароли не совпадают');
+      isLoading.value = false;
       return;
     }
 
     try {
       await _authRepository.register(
-          firstName, lastName, email, password, confirmPassword);
-      Get.snackbar('Успех', 'Вы успешно зарегистрировались');
+          firstName, lastName, email, password, confirmPassword, role);
 
       // Сохраняем роль пользователя
       box.write('role', role);
-      print('=== REGISTRATION DEBUG ===');
-      print('Role saved: $role');
-      print('=== END REGISTRATION DEBUG ===');
+      // Привязываем роль к email для последующих логинов
+      box.write('roleByEmail:$email', role);
+
+      // Сохраняем данные профиля в локальное хранилище
+      box.write('userProfile', {
+        'firstName': firstName,
+        'lastName': lastName,
+        'email': email,
+        'phone': '', // Телефон можно добавить позже при редактировании профиля
+        'deliveryPoint': '', // Точка доставки устанавливается позже
+        'profileImage': '', // Фото профиля загружается позже
+      });
 
       // Автоматически входим в систему после регистрации
       await autoLoginAfterRegistration(email, password, role);
     } catch (e) {
-      Get.snackbar('Ошибка', e.toString());
+      Get.snackbar('Ошибка', _getErrorMessage(e));
+    } finally {
+      isLoading.value = false;
     }
   }
 
   /// Автоматический вход после регистрации
   Future<void> autoLoginAfterRegistration(
-      String email, String password, String role) async {
+String email, String password, String role) async {
     try {
       final userData = await _authRepository.login(email, password);
+
+      // Отладочная информация
+      print('📥 Ответ сервера при автологине после регистрации:');
+      print('   - Ключи в ответе: ${userData.keys.toList()}');
+      print('   - userData: $userData');
 
       // Сохраняем данные пользователя
       box.write('loggedIn', true);
@@ -73,57 +96,47 @@ class AuthController extends GetxController {
 
       // Сохраняем userId, если он есть в ответе
       if (userData['userId'] != null) {
+        print('✅ userId найден в ответе: ${userData['userId']}');
         box.write('userId', userData['userId']);
-        print('✅ UserId сохранен: ${userData['userId']}');
       } else if (userData['id'] != null) {
+        print('✅ id найден в ответе: ${userData['id']}');
         box.write('userId', userData['id']);
-        print('✅ UserId сохранен (из поля id): ${userData['id']}');
       } else {
-        print('⚠️ UserId не найден в ответе сервера');
-        print('Доступные поля в ответе: ${userData.keys.toList()}');
-        print('Полный ответ сервера: $userData');
+        print('⚠️ userId и id не найдены в ответе сервера');
+        print('   - Проверяем другие возможные ключи...');
+        // Пробуем найти userId в других возможных ключах
+        for (var key in userData.keys) {
+          if (key.toLowerCase().contains('user') || key.toLowerCase().contains('id')) {
+            print('   - Найден ключ $key: ${userData[key]}');
+          }
+        }
       }
 
       // Сохраняем токен, если он есть в ответе
       if (userData['token'] != null) {
         box.write('token', userData['token']);
-        print('Токен сохранен: ${userData['token']}');
-
-        // Тестируем API товаров с полученным токеном
-        await _authRepository.testProductsAPI(userData['token']);
-
-        // Тестируем разные форматы авторизации
-        await _authRepository
-            .testProductsAPIWithDifferentAuth(userData['token']);
-      } else {
-        print('Токен не найден в ответе сервера');
-        print('Полный ответ сервера: $userData');
-
-        // Тестируем API товаров без авторизации
-        await _authRepository.testProductsAPIWithoutAuth();
-
-        // Тестируем альтернативные пути API
-        await _authRepository.testAlternativeProductPaths();
       }
 
-      Get.snackbar('Успех', 'Вы успешно вошли в систему');
+      // Обновляем данные профиля, если сервер их возвращает
+      final existingProfile = box.read<Map<String, dynamic>>('userProfile') ?? {};
+      box.write('userProfile', {
+        'firstName': userData['firstName'] ?? existingProfile['firstName'] ?? '',
+        'lastName': userData['lastName'] ?? existingProfile['lastName'] ?? '',
+        'email': userData['email'] ?? email,
+        'phone': userData['phone'] ?? existingProfile['phone'] ?? '',
+        'deliveryPoint': userData['deliveryPoint'] ?? existingProfile['deliveryPoint'] ?? '',
+        'profileImage': userData['profileImage'] ?? existingProfile['profileImage'] ?? '',
+      });
 
       // Перенаправляем согласно роли
-      print('=== AUTO LOGIN DEBUG ===');
-      print('Role for redirect: $role');
       if (role == 'seller') {
-        print('Redirecting to sellerHome');
         Get.offAllNamed(AppRoutes.sellerHome);
-      } else if (role == 'tech') {
-        print('Redirecting to techHome');
+      } else if (role == 'technician') {
         Get.offAllNamed(AppRoutes.techHome);
       } else {
-        print('Redirecting to home');
         Get.offAllNamed(AppRoutes.home);
       }
-      print('=== END AUTO LOGIN DEBUG ===');
     } catch (e) {
-      print('Ошибка автоматического входа: $e');
       // Если автоматический вход не удался, перенаправляем на экран входа
       Get.offAllNamed(AppRoutes.login);
     }
@@ -131,26 +144,25 @@ class AuthController extends GetxController {
 
   /// Авторизация
   Future<void> login() async {
+    if (isLoading.value) return; // Предотвращаем множественные запросы
+
+    isLoading.value = true;
+
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      Get.snackbar('Ошибка', 'Введите email и пароль');
+      isLoading.value = false;
       return;
     }
 
     try {
-      print('=== НАЧАЛО ЛОГИНА ===');
-      print('Email: $email');
-      print('Пароль: ${password.length} символов');
-
       final userData = await _authRepository.login(email, password);
 
-      print('=== ОТВЕТ СЕРВЕРА ПРИ ЛОГИНЕ ===');
-      print('Полный ответ: $userData');
-      print('Тип ответа: ${userData.runtimeType}');
-      print('Ключи в ответе: ${userData.keys.toList()}');
-      print('=== КОНЕЦ ОТВЕТА СЕРВЕРА ===');
+      // Отладочная информация
+      print('📥 Ответ сервера при логине:');
+      print('   - Ключи в ответе: ${userData.keys.toList()}');
+      print('   - userData: $userData');
 
       // Сохраняем данные пользователя
       box.write('loggedIn', true);
@@ -158,56 +170,70 @@ class AuthController extends GetxController {
 
       // Сохраняем userId, если он есть в ответе
       if (userData['userId'] != null) {
+        print('✅ userId найден в ответе: ${userData['userId']}');
         box.write('userId', userData['userId']);
-        print('✅ UserId сохранен: ${userData['userId']}');
       } else if (userData['id'] != null) {
+        print('✅ id найден в ответе: ${userData['id']}');
         box.write('userId', userData['id']);
-        print('✅ UserId сохранен (из поля id): ${userData['id']}');
       } else {
-        print('⚠️ UserId не найден в ответе сервера');
-        print('Доступные поля в ответе: ${userData.keys.toList()}');
-        print('Полный ответ сервера: $userData');
+        print('⚠️ userId и id не найдены в ответе сервера');
+        print('   - Проверяем другие возможные ключи...');
+        // Пробуем найти userId в других возможных ключах
+        for (var key in userData.keys) {
+          if (key.toLowerCase().contains('user') || key.toLowerCase().contains('id')) {
+            print('   - Найден ключ $key: ${userData[key]}');
+          }
+        }
       }
 
       // Сохраняем токен, если он есть в ответе
       if (userData['token'] != null) {
         box.write('token', userData['token']);
-        print('✅ Токен сохранен: ${userData['token']}');
-      } else {
-        print('❌ Токен не найден в ответе сервера');
-        print('Доступные поля в ответе: ${userData.keys.toList()}');
       }
 
       // Сохраняем роль, если она есть в ответе
       if (userData['role'] != null) {
         box.write('role', userData['role']);
-        print('Роль сохранена: ${userData['role']}');
+        // Кэшируем соответствие email→role
+        box.write('roleByEmail:$email', userData['role']);
       } else {
-        // Если роль не пришла с сервера, сохраняем существующую роль
-        final existingRole = box.read('role');
-        if (existingRole != null) {
-          print('Используем существующую роль: $existingRole');
+        // Если роль не пришла с сервера, пробуем взять из кэша по email
+        final cachedRoleByEmail = box.read('roleByEmail:$email');
+        if (cachedRoleByEmail != null) {
+          box.write('role', cachedRoleByEmail);
         } else {
-          box.write('role', 'buyer'); // Роль по умолчанию
-          print('Установлена роль по умолчанию: buyer');
+          // Если ничего нет, сохраняем роль по умолчанию
+          final existingRole = box.read('role');
+          if (existingRole == null) {
+            box.write('role', 'buyer');
+          }
         }
       }
 
-      print('=== КОНЕЦ ЛОГИНА ===');
-      Get.snackbar('Успех', 'Вы успешно вошли');
+      // Сохраняем или обновляем данные профиля из ответа сервера
+      final existingProfile = box.read<Map<String, dynamic>>('userProfile') ?? {};
+      box.write('userProfile', {
+        'firstName': userData['firstName'] ?? existingProfile['firstName'] ?? '',
+        'lastName': userData['lastName'] ?? existingProfile['lastName'] ?? '',
+        'email': userData['email'] ?? email,
+        'phone': userData['phone'] ?? existingProfile['phone'] ?? '',
+        'deliveryPoint': userData['deliveryPoint'] ?? existingProfile['deliveryPoint'] ?? '',
+        'profileImage': userData['profileImage'] ?? existingProfile['profileImage'] ?? '',
+      });
 
       // Перенаправляем согласно роли
       final userRole = userData['role'] ?? box.read('role') ?? 'buyer';
       if (userRole == 'seller') {
         Get.offAllNamed(AppRoutes.sellerHome);
-      } else if (userRole == 'tech') {
+      } else if (userRole == 'technician') {
         Get.offAllNamed(AppRoutes.techHome);
       } else {
         Get.offAllNamed(AppRoutes.home);
       }
     } catch (e) {
-      print('❌ Ошибка при логине: $e');
-      Get.snackbar('Ошибка', e.toString());
+      Get.snackbar('Ошибка', _getErrorMessage(e));
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -223,26 +249,57 @@ class AuthController extends GetxController {
 
   /// Сброс пароля — если ваше API это поддерживает
   Future<void> resetPassword() async {
+    if (isLoading.value) return;
+
+    isLoading.value = true;
+
     final email = emailController.text.trim();
     if (email.isEmpty) {
-      Get.snackbar('Ошибка', 'Введите email');
+      isLoading.value = false;
       return;
     }
 
     try {
       await _authRepository.forgotPassword(email);
-      Get.snackbar('Успех', 'Инструкции по сбросу пароля отправлены на email');
     } catch (e) {
-      Get.snackbar('Ошибка', e.toString());
+      Get.snackbar('Ошибка', _getErrorMessage(e));
+    } finally {
+      isLoading.value = false;
     }
   }
 
   /// Выход
   void logout() {
     box.remove('loggedIn');
-    box.remove('role');
+    // Не удаляем role, чтобы сохранить привязку роли, если сервер не возвращает роль при следующем логине
     box.remove('token');
+    // Храним последнюю роль и кэш соответствия email→role; очищаем только активный email и userId
+    final currentEmail = box.read('email');
+    if (currentEmail != null) {
+      // соответствие roleByEmail:<email> сохраняем, чтобы использовать при следующем входе
+    }
     box.remove('email');
+    box.remove('userId');
     Get.offAllNamed(AppRoutes.login);
+  }
+
+  /// Получить понятное сообщение об ошибке
+  String _getErrorMessage(dynamic error) {
+    final errorString = error.toString().toLowerCase();
+
+    if (errorString.contains('connection') || errorString.contains('network')) {
+      return 'Проблема с подключением к серверу. Проверьте интернет-соединение.';
+    } else if (errorString.contains('timeout')) {
+      return 'Превышено время ожидания. Попробуйте еще раз.';
+    } else if (errorString.contains('401') ||
+        errorString.contains('unauthorized')) {
+      return 'Неверный email или пароль.';
+    } else if (errorString.contains('404')) {
+      return 'Сервер не найден. Обратитесь к администратору.';
+    } else if (errorString.contains('500')) {
+      return 'Ошибка сервера. Попробуйте позже.';
+    } else {
+      return 'Произошла ошибка. Попробуйте еще раз.';
+    }
   }
 }

@@ -1,23 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../data/sources/api/flight_api.dart';
-import '../../../common/widgets/swipe_confirm_dialog.dart';
 import '../../../data/models/order_model.dart';
 import '../../../data/repositories/order_repository.dart';
+import '../../../common/styles/colors.dart';
+import '../../../common/widgets/swipe_confirm_dialog.dart';
 
-class TechDeliveryCompletedScreen extends StatefulWidget {
-  const TechDeliveryCompletedScreen({Key? key}) : super(key: key);
+/// Экран завершения доставки для покупателя
+class DeliveryCompletedScreen extends StatefulWidget {
+  const DeliveryCompletedScreen({Key? key}) : super(key: key);
 
   @override
-  State<TechDeliveryCompletedScreen> createState() =>
-      _TechDeliveryCompletedScreenState();
+  State<DeliveryCompletedScreen> createState() => _DeliveryCompletedScreenState();
 }
 
-class _TechDeliveryCompletedScreenState
-    extends State<TechDeliveryCompletedScreen> {
+class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
   bool isDroneOpen = false;
   bool isOpeningDrone = false;
-  bool isSendingDrone = false;
+  bool isReceivingOrder = false;
   final OrderRepository _orderRepository = OrderRepository();
   OrderModel? _orderData;
 
@@ -37,14 +36,14 @@ class _TechDeliveryCompletedScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Отправка товара'),
-        backgroundColor: Colors.blue,
+        title: Text('Получение заказа'),
+        backgroundColor: KColors.primary,
+        foregroundColor: Colors.white,
         centerTitle: true,
       ),
       body: SafeArea(
         child: Padding(
-          padding:
-              const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 44),
+          padding: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 44),
           child: Column(
             children: [
               SizedBox(
@@ -53,14 +52,29 @@ class _TechDeliveryCompletedScreenState
                 child: Image.asset(
                   'assets/images/drone/delivery.gif',
                   fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[200],
+                      child: Icon(Icons.local_shipping, size: 100, color: Colors.grey[400]),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 24),
               Text(
-                'Дрон готов доставить товар!',
+                'Дрон прибыл! Заберите ваш заказ',
                 style: Theme.of(context).textTheme.titleLarge,
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 8),
+              if (_orderData != null)
+                Text(
+                  'Заказ #${_orderData!.id}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
               const Spacer(),
               // Управление грузовым отсеком с индикатором
               Container(
@@ -70,18 +84,15 @@ class _TechDeliveryCompletedScreenState
                     color: isDroneOpen ? Colors.green : Colors.grey.shade400,
                     width: 2,
                   ),
-                  color:
-                      isDroneOpen ? Colors.green.shade50 : Colors.grey.shade50,
+                  color: isDroneOpen ? Colors.green.shade50 : Colors.grey.shade50,
                 ),
                 child: Column(
                   children: [
                     // Индикатор состояния
                     Container(
-                      padding:
-                          EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                       decoration: BoxDecoration(
-                        color:
-                            isDroneOpen ? Colors.green : Colors.grey.shade300,
+                        color: isDroneOpen ? Colors.green : Colors.grey.shade300,
                         borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(10),
                           topRight: Radius.circular(10),
@@ -134,32 +145,22 @@ class _TechDeliveryCompletedScreenState
                                   height: 24,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2.5,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                   ),
                                 )
                               : Icon(
-                                  isDroneOpen
-                                      ? Icons.arrow_upward
-                                      : Icons.arrow_downward,
+                                  isDroneOpen ? Icons.arrow_upward : Icons.arrow_downward,
                                   size: 28,
                                 ),
                           label: Text(
                             isOpeningDrone
-                                ? (isDroneOpen
-                                    ? 'Закрываем...'
-                                    : 'Открываем...')
-                                : (isDroneOpen
-                                    ? 'Закрыть отсек'
-                                    : 'Открыть отсек'),
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.w600),
+                                ? (isDroneOpen ? 'Закрываем...' : 'Открываем...')
+                                : (isDroneOpen ? 'Закрыть отсек' : 'Открыть отсек'),
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                           ),
                           style: ElevatedButton.styleFrom(
                             padding: EdgeInsets.symmetric(vertical: 18),
-                            backgroundColor: isDroneOpen
-                                ? Colors.orange.shade600
-                                : Colors.green.shade600,
+                            backgroundColor: isDroneOpen ? Colors.orange.shade600 : Colors.green.shade600,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -173,44 +174,46 @@ class _TechDeliveryCompletedScreenState
                 ),
               ),
               const SizedBox(height: 24),
-              // Кнопка отправки дрона
+              // Кнопка подтверждения получения заказа
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: isSendingDrone
+                  onPressed: isReceivingOrder || !isDroneOpen
                       ? null
                       : () {
                           SwipeConfirmDialog.show(
                             context: context,
-                            title: 'Отправить дрон',
-                            message: 'Вы уверены, что хотите отправить дрон на базу?',
-                            confirmText: 'Отправить',
-                            confirmColor: Colors.blue,
-                            icon: Icons.flight_takeoff,
+                            title: 'Подтвердить получение',
+                            message: 'Вы подтверждаете получение заказа? Заказ будет перемещен в историю.',
+                            confirmText: 'Подтвердить',
+                            confirmColor: KColors.primary,
+                            icon: Icons.check_circle,
                             onConfirm: () {
-                              _sendDroneBack();
+                              _confirmOrderReceived();
                             },
                           );
                         },
-                  icon: isSendingDrone
+                  icon: isReceivingOrder
                       ? SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.5,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : Icon(Icons.flight_takeoff, size: 24),
+                      : Icon(Icons.check_circle, size: 24),
                   label: Text(
-                    isSendingDrone ? 'Отправляем...' : 'Отправить дрон',
+                    isReceivingOrder ? 'Обрабатываем...' : 'Подтвердить получение заказа',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.blue,
+                    backgroundColor: KColors.primary,
                     foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ),
@@ -226,33 +229,20 @@ class _TechDeliveryCompletedScreenState
       isOpeningDrone = true;
     });
     try {
-      // Вызываем API для открытия/закрытия отсека
-      final response = await FlightApi.openDroneBox(!isDroneOpen);
-
-      // Выводим ответ сервера в консоль
-      print('Ответ сервера при управлении грузовым отсеком:');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
-      print('Response Headers: ${response.headers}');
-
-      if (response.statusCode == 200) {
-        // Проверяем, содержит ли ответ слово "успех"
-        final responseBody = response.body.toLowerCase();
-        if (responseBody.contains('успех') ||
-            responseBody.contains('success')) {
-          print('✅ Сервер вернул успешный ответ: ${response.body}');
-        }
-
-        setState(() {
-          isDroneOpen = !isDroneOpen;
-        });
-
-      } else {
-        print(
-            '❌ Ошибка при управлении отсеком: ${response.statusCode} - ${response.body}');
-      }
+      // Имитация открытия/закрытия отсека
+      await Future.delayed(Duration(seconds: 1));
+      
+      setState(() {
+        isDroneOpen = !isDroneOpen;
+      });
     } catch (e) {
-      print('❌ Исключение при управлении отсеком: $e');
+      print('❌ Ошибка при управлении отсеком: $e');
+      Get.snackbar(
+        'Ошибка',
+        'Не удалось управлять грузовым отсеком',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -262,33 +252,41 @@ class _TechDeliveryCompletedScreenState
     }
   }
 
-  void _sendDroneBack() async {
+  void _confirmOrderReceived() async {
     if (_orderData == null) {
       return;
     }
 
     setState(() {
-      isSendingDrone = true;
+      isReceivingOrder = true;
     });
 
     try {
       // Обновляем статус заказа на "delivered" чтобы он попал в историю
-      // Статус будет сохранен локально даже если сервер не поддерживает обновление
-      final updated = await _orderRepository.updateOrderStatus(
+      await _orderRepository.updateOrderStatus(
         _orderData!.id.toString(),
         'delivered',
       );
 
-      // Имитация задержки отправки
+      // Имитация задержки обработки
       await Future.delayed(Duration(milliseconds: 500));
       
-      // Возвращаемся к списку заказов (он автоматически обновится)
-      Get.offAllNamed('/tech-home');
+      // Возвращаемся на главный экран
+      Get.offAllNamed('/home');
+      
+      // Показываем сообщение об успехе
+      Get.snackbar(
+        'Успешно',
+        'Заказ получен и перемещен в историю',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        duration: Duration(seconds: 2),
+      );
     } catch (e) {
-      print('❌ Неожиданная ошибка при отправке дрона: $e');
+      print('❌ Ошибка при подтверждении получения заказа: $e');
       Get.snackbar(
         'Ошибка',
-        'Неожиданная ошибка: ${e.toString()}',
+        'Не удалось подтвердить получение заказа: ${e.toString()}',
         backgroundColor: Colors.red,
         colorText: Colors.white,
         duration: Duration(seconds: 4),
@@ -296,9 +294,10 @@ class _TechDeliveryCompletedScreenState
     } finally {
       if (mounted) {
         setState(() {
-          isSendingDrone = false;
+          isReceivingOrder = false;
         });
       }
     }
   }
 }
+

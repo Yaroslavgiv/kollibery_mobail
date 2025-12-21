@@ -8,8 +8,24 @@ import '../../../common/themes/theme.dart';
 import '../../../utils/device/screen_util.dart';
 import '../controllers/profile_controller.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
   final ProfileController profileController = Get.put(ProfileController());
+
+  @override
+  void initState() {
+    super.initState();
+    // Обновляем данные профиля при открытии экрана
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      profileController.fetchProfileData();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +72,10 @@ class ProfileScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    '${profileController.firstName.value} ${profileController.lastName.value}',
+                    (profileController.firstName.value.isNotEmpty || 
+                     profileController.lastName.value.isNotEmpty)
+                        ? '${profileController.firstName.value} ${profileController.lastName.value}'.trim()
+                        : 'Имя не указано',
                     style: KTextTheme
                         .lightTextTheme.headlineLarge, // Имя пользователя
                   ),
@@ -65,19 +84,22 @@ class ProfileScreen extends StatelessWidget {
               SizedBox(height: ScreenUtil.adaptiveHeight(10)),
 
               // Почта
-              ListTile(
-                leading: Icon(Icons.email, color: KColors.primary),
-                title: Text(
-                  profileController.email.value,
-                  style: KTextTheme.lightTextTheme.headlineSmall, // Текст почты
+              if (profileController.email.value.isNotEmpty)
+                ListTile(
+                  leading: Icon(Icons.email, color: KColors.primary),
+                  title: Text(
+                    profileController.email.value,
+                    style: KTextTheme.lightTextTheme.headlineSmall, // Текст почты
+                  ),
                 ),
-              ),
 
               // Телефон
               ListTile(
                 leading: Icon(Icons.phone, color: KColors.primary),
                 title: Text(
-                  profileController.phone.value,
+                  profileController.phone.value.isNotEmpty
+                      ? profileController.phone.value
+                      : 'Телефон не указан',
                   style: KTextTheme.lightTextTheme.headlineSmall, // Телефон
                 ),
               ),

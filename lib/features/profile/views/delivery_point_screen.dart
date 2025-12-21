@@ -7,14 +7,13 @@ import 'package:latlong2/latlong.dart';
 import 'package:get/get.dart';
 import 'package:location/location.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
 import '../../../common/styles/colors.dart';
-import '../../orders/views/delivery_status_screen.dart';
-import '../../../data/repositories/flight_repository.dart';
 import '../../../data/repositories/order_repository.dart';
 import '../../../data/models/order_model.dart';
 import '../../cart/controllers/cart_controller.dart';
+import '../../orders/controllers/orders_controller.dart';
 import '../../../utils/constants/strings.dart';
+import '../../../utils/device/screen_util.dart';
 
 /// Экран выбора точки доставки
 class DeliveryPointScreen extends StatefulWidget {
@@ -49,6 +48,10 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
   // Переменная для хранения данных о товаре
   Map<String, dynamic>? _productData;
 
+  // Сохраняем выбранную точку и адрес для кнопки "Заказать"
+  LatLng? _selectedPoint;
+  String? _selectedAddress;
+
   // Список вариантов адресов
   List<Map<String, dynamic>> _suggestions = [];
 
@@ -56,22 +59,36 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
   final GetStorage _storage = GetStorage();
   List<String> _searchHistory = [];
 
+  // Тип карты: true - спутниковая, false - обычная
+  bool _isSatelliteView = false;
+
   @override
   void initState() {
     super.initState();
-    _checkAndRequestPermissions(); // Проверяем разрешения на геолокацию при запуске экрана
     _loadSearchHistory();
+    _checkAndRequestPermissions(); // Проверяем разрешения на геолокацию при запуске экрана
 
     // Получаем аргументы из Get.arguments
     final arguments = Get.arguments;
     if (arguments != null) {
       final role = arguments['role'] as String?;
       final productData = arguments['productData'] as Map<String, dynamic>?;
+      final cartItems = arguments['cartItems'] as List<dynamic>?;
+      final fromCart = arguments['fromCart'] as bool? ?? false;
 
       if (role != null) {
         widget.role = role;
       }
-      if (productData != null) {
+
+      // Если заказ из корзины, берем первый товар из списка
+      if (fromCart && cartItems != null && cartItems.isNotEmpty) {
+        final firstCartItem = cartItems.first as Map<String, dynamic>;
+        // Устанавливаем флаг fromCart для товара
+        firstCartItem['fromCart'] = true;
+        setState(() {
+          _productData = firstCartItem;
+        });
+      } else if (productData != null) {
         // Обновляем данные о товаре
         setState(() {
           _productData = productData;
@@ -116,14 +133,17 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
               initialCenter: _currentPosition ?? _defaultPosition,
               initialZoom: 12.0,
               // Установка маркера при клике на карту
-              onTap: (tapPosition, point) {
-                _updateDeliveryPoint(point);
+              onTap: (tapPosition, point) async {
+                await _updateDeliveryPoint(point, showDialog: false);
               },
             ),
             children: [
-              /// Слой с картами OpenStreetMap
+              /// Слой с картами (обычная или спутниковая)
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: _isSatelliteView
+                    ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                    : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.kollibry',
               ),
 
               /// Слой с маркером доставки (если он установлен)
@@ -213,16 +233,60 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
             bottom: 20,
             right: 20,
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
+                /// Кнопка переключения вида карты
+                FloatingActionButton(
+                  backgroundColor: KColors.primary,
+                  onPressed: _toggleMapType,
+                  heroTag: 'map_type',
+                  child: Icon(
+                    _isSatelliteView ? Icons.map : Icons.satellite,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 10),
+
                 /// Кнопка для получения текущего местоположения
                 FloatingActionButton(
                   backgroundColor: KColors.primary,
                   onPressed: _getCurrentLocation,
+                  heroTag: 'my_location',
                   child: const Icon(Icons.my_location, color: Colors.white),
                 ),
               ],
             ),
           ),
+
+          /// Кнопка "Заказать" внизу экрана
+          if (_deliveryMarker != null)
+            Positioned(
+              bottom: 20,
+              left: 20,
+              right: 100, // Оставляем место для кнопок справа
+              child: ElevatedButton.icon(
+                onPressed: _onOrderButtonPressed,
+                icon: Icon(Icons.shopping_bag, color: Colors.white),
+                label: Text(
+                  'Заказать',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: KColors.buttonDark,
+                  padding: EdgeInsets.symmetric(
+                    vertical: ScreenUtil.adaptiveHeight(15),
+                    horizontal: ScreenUtil.adaptiveWidth(20),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -247,11 +311,25 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
     permissionGranted = await _location.hasPermission();
     if (permissionGranted == PermissionStatus.denied) {
       permissionGranted = await _location.requestPermission();
-      if (permissionGranted != PermissionStatus.granted) {
+      if (permissionGranted != PermissionStatus.granted &&
+          permissionGranted != PermissionStatus.grantedLimited) {
         Get.snackbar('Ошибка', 'Необходимо разрешение на геолокацию');
         return;
       }
     }
+
+    // После получения разрешений автоматически определяем местоположение
+    if (permissionGranted == PermissionStatus.granted ||
+        permissionGranted == PermissionStatus.grantedLimited) {
+      _getCurrentLocation();
+    }
+  }
+
+  /// Переключение между обычным и спутниковым видом карты
+  void _toggleMapType() {
+    setState(() {
+      _isSatelliteView = !_isSatelliteView;
+    });
   }
 
   /// Получение списка адресов для автоподсказки
@@ -284,21 +362,21 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
 
       setState(() {
         _currentPosition = newLocation;
-        _updateDeliveryPoint(newLocation);
       });
 
-      _mapController.move(newLocation, 16.0);
+      // Устанавливаем точку доставки без показа диалога
+      await _updateDeliveryPoint(newLocation, showDialog: false);
 
-      Get.snackbar(
-        duration: Duration(seconds: 2),
-        'Успешно',
-        'Местоположение определено: ${newLocation.latitude}, ${newLocation.longitude}',
-      );
+      // Перемещаем карту к текущему местоположению
+      _mapController.move(newLocation, 16.0);
     } catch (e) {
       Get.snackbar(
-          duration: Duration(seconds: 2),
-          'Ошибка',
-          'Не удалось получить текущее местоположение');
+        'Ошибка',
+        'Не удалось получить текущее местоположение',
+        duration: Duration(seconds: 2),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -306,7 +384,6 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
   Future<void> _searchLocation() async {
     final query = _searchController.text.trim();
     if (query.isEmpty) {
-      Get.snackbar('Ошибка', 'Введите адрес для поиска');
       return;
     }
 
@@ -324,42 +401,22 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
 
         setState(() {
           _currentPosition = newLocation;
-          _updateDeliveryPoint(newLocation);
           _suggestions.clear(); // Очищаем список предложенных адресов
         });
+
+        // Устанавливаем точку доставки без показа диалога
+        await _updateDeliveryPoint(newLocation, showDialog: false);
 
         _mapController.move(newLocation, 16.0);
 
         _saveSearchHistory(query);
-
-        Get.snackbar(
-            duration: Duration(seconds: 2), 'Успешно', 'Найден адрес: $query');
-      } else {
-        Get.snackbar('Ошибка', 'Адрес не найден');
       }
-    } else {
-      Get.snackbar('Ошибка', 'Ошибка при выполнении запроса');
-    }
-  }
-
-  /// Открытие координат в Яндекс.Картах
-  Future<void> _openInYandexMaps() async {
-    if (_currentPosition == null) {
-      Get.snackbar('Ошибка', 'Сначала выберите местоположение');
-      return;
-    }
-
-    final url =
-        'https://yandex.ru/maps/?ll=${_currentPosition!.longitude},${_currentPosition!.latitude}&z=16';
-    if (await canLaunch(url)) {
-      await launch(url);
-    } else {
-      Get.snackbar('Ошибка', 'Не удалось открыть Яндекс.Карты');
     }
   }
 
   /// Устанавливает маркер точки доставки на карте
-  void _updateDeliveryPoint(LatLng point) async {
+  Future<void> _updateDeliveryPoint(LatLng point,
+      {bool showDialog = false}) async {
     setState(() {
       _deliveryMarker = Marker(
         point: point,
@@ -371,21 +428,37 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
           size: 40,
         ),
       );
+      _selectedPoint = point;
     });
-
-    // Перемещаем карту к новому маркеру
-    _mapController.move(point, 16.0);
 
     // Запрашиваем адрес по координатам
     String address = await _getAddressFromLatLng(point);
+    _selectedAddress = address;
 
-    // Показываем окно подтверждения с адресом
-    _showOrderConfirmationDialog(address, point);
+    // Если нужно показать диалог (при клике на карту или поиске)
+    if (showDialog) {
+      // Перемещаем карту к новому маркеру только если нужно показать диалог
+      _mapController.move(point, 16.0);
+      _showOrderConfirmationDialog(address, point);
+    }
+  }
 
-    // Get.snackbar(
-    //     duration: Duration(seconds: 2),
-    //     'Точка выбрана',
-    //     '${point.latitude}, ${point.longitude}');
+  /// Обработчик нажатия на кнопку "Заказать"
+  Future<void> _onOrderButtonPressed() async {
+    if (_selectedPoint == null || _selectedAddress == null) {
+      Get.snackbar(
+        'Ошибка',
+        'Сначала выберите точку доставки на карте',
+        duration: Duration(seconds: 2),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    // Показываем диалог подтверждения без изменения масштаба карты
+    // Масштаб остается неизменным, так как мы не вызываем _mapController.move()
+    _showOrderConfirmationDialog(_selectedAddress!, _selectedPoint!);
   }
 
   /// Сохранение истории поиска (до 3 последних запросов)
@@ -462,7 +535,6 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
     String productImage = '';
     double price = 0.0;
     bool isTechOrder = false;
-    int? originalOrderId;
 
     if (_productData != null) {
       // Если есть данные о товаре, используем их
@@ -472,7 +544,59 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
       productImage = _productData!['image'] ?? '';
       price = (_productData!['price'] ?? 0.0).toDouble();
       isTechOrder = _productData!['isTechOrder'] ?? false;
-      originalOrderId = _productData!['originalOrderId'];
+    }
+
+    // Отправляем заказ на сервер
+    try {
+      print('📤 СОЗДАНИЕ ЗАКАЗА ПОКУПАТЕЛЕМ');
+      print('   userId: $userId');
+      print('   productId: $productId');
+      print('   quantity: $quantity');
+      print('   Координаты: ${point.latitude}, ${point.longitude}');
+
+      final orderRepository = OrderRepository();
+      final success = await orderRepository.placeOrder(
+        userId: userId,
+        productId: productId,
+        quantity: quantity,
+        deliveryLatitude: point.latitude,
+        deliveryLongitude: point.longitude,
+      );
+
+      if (!success) {
+        print('❌ Заказ НЕ был размещен на сервере!');
+        Get.snackbar(
+          "Ошибка",
+          "Не удалось разместить заказ на сервере. Проверьте логи.",
+          duration: Duration(seconds: 5),
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+        return;
+      }
+
+      print('✅ Заказ успешно отправлен на сервер!');
+      print('   Теперь продавец должен увидеть этот заказ в списке');
+
+      // Обновляем список заказов после успешного создания (если контроллер инициализирован)
+      try {
+        if (Get.isRegistered<OrdersController>()) {
+          final ordersController = Get.find<OrdersController>();
+          await ordersController.loadOrders();
+        }
+      } catch (e) {
+        // Игнорируем ошибки обновления списка заказов
+        print('Не удалось обновить список заказов: $e');
+      }
+    } catch (e) {
+      Get.snackbar(
+        "Ошибка",
+        "Ошибка при размещении заказа: $e",
+        duration: Duration(seconds: 3),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
     }
 
     // Создаем объект заказа для передачи на экран статусов
@@ -493,14 +617,22 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
       updatedAt: DateTime.now(),
     );
 
-    // Показываем уведомление об успешном заказе
-    Get.snackbar(
-      "Заказ оформлен",
-      "Точка: $address",
-      duration: Duration(seconds: 2),
-      backgroundColor: KColors.buttonDark,
-      colorText: Colors.white,
-    );
+    // Сохраняем заказ локально, чтобы он сразу отображался в истории
+    try {
+      final localOrders = box.read<List<dynamic>>('local_orders') ?? [];
+      final orderJson = orderModel.toJson();
+      localOrders.add(orderJson);
+      // Оставляем только последние 50 заказов
+      if (localOrders.length > 50) {
+        localOrders.removeRange(0, localOrders.length - 50);
+      }
+      box.write('local_orders', localOrders);
+      print('✅ Заказ сохранен локально: ${orderModel.id}');
+    } catch (e) {
+      print('⚠️ Не удалось сохранить заказ локально: $e');
+    }
+
+    // Заказ оформлен
 
     // Очищаем корзину если заказ был из корзины
     if (_productData != null && _productData!['fromCart'] == true) {
@@ -513,7 +645,7 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
     }
 
     // Для техника показываем снекбар с кнопкой "Вызвать дрон"
-    if (role == 'tech' || isTechOrder) {
+    if (role == 'technician' || isTechOrder) {
       _showDroneCallSnackBar(orderModel, address);
     } else {
       // Сразу переходим на экран статусов доставки с данными заказа
@@ -523,37 +655,12 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
 
   /// Показывает снекбар с кнопкой "Вызвать дрон" для техника
   void _showDroneCallSnackBar(OrderModel orderModel, String address) {
-    Get.snackbar(
-      'Заказ оформлен',
-      'Точка доставки: $address\nНажмите для вызова дрона',
-      duration: Duration(seconds: 8),
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-      mainButton: TextButton(
-        onPressed: () {
-          Get.closeCurrentSnackbar();
-          _callDrone(orderModel);
-        },
-        child: Text(
-          'Вызвать дрон',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
-      snackPosition: SnackPosition.BOTTOM,
-    );
+    // Вызываем дрон напрямую
+    _callDrone(orderModel);
   }
 
   /// Вызывает дрон и переходит к статусам продавца
   void _callDrone(OrderModel orderModel) {
-    // Показываем уведомление о вызове дрона
-    Get.snackbar(
-      'Дрон вызван',
-      'Дрон направляется к точке доставки',
-      duration: Duration(seconds: 3),
-      backgroundColor: Colors.blue,
-      colorText: Colors.white,
-    );
-
     // Переходим к статусам продавца
     Get.toNamed('/seller-order-status', arguments: orderModel);
   }
@@ -563,18 +670,25 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
     final url = Uri.parse(
         'https://nominatim.openstreetmap.org/reverse?lat=${point.latitude}&lon=${point.longitude}&format=json');
 
+    final String fallback =
+        '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
+
     try {
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final address = data['display_name']; // Полный адрес
-        return address ?? "Адрес не найден";
+        if (address is String && address.trim().isNotEmpty) {
+          return address;
+        } else {
+          return fallback; // Если адрес пустой
+        }
       } else {
-        return "Ошибка загрузки адреса";
+        return fallback; // Если не 200 — возвращаем координаты
       }
     } catch (e) {
-      return "Ошибка сети: $e";
+      return fallback; // При любой ошибке сети — координаты
     }
   }
 }
