@@ -6,11 +6,11 @@ import '../../../data/repositories/auth_repository.dart';
 class ProfileController extends GetxController {
   // Объекты данных профиля
   final RxString profileImage = ''.obs; // Путь к изображению профиля
-  final RxString firstName = 'Имя'.obs; // Имя пользователя
-  final RxString lastName = 'Фамилия'.obs; // Фамилия пользователя
-  final RxString email = 'example@mail.com'.obs; // Электронная почта
-  final RxString phone = '+7 (123) 456-78-90'.obs; // Телефон
-  final RxString deliveryPoint = 'Адрес не указан'.obs; // Точка доставки
+  final RxString firstName = ''.obs; // Имя пользователя
+  final RxString lastName = ''.obs; // Фамилия пользователя
+  final RxString email = ''.obs; // Электронная почта
+  final RxString phone = ''.obs; // Телефон
+  final RxString deliveryPoint = ''.obs; // Точка доставки
 
   final GetStorage storage = GetStorage(); // Локальное хранилище
   final AuthRepository _authRepository = AuthRepository(); // Репозиторий для работы с API
@@ -25,6 +25,14 @@ class ProfileController extends GetxController {
   /// Загрузка данных профиля из локального хранилища или API
   Future<void> fetchProfileData() async {
     try {
+      // Получаем текущую роль для отладки
+      final currentRole = storage.read<String>('role') ?? 'unknown';
+      final currentEmail = storage.read<String>('email') ?? 'unknown';
+      
+      print('📥 Загрузка данных профиля:');
+      print('   - Текущая роль: $currentRole');
+      print('   - Текущий email: $currentEmail');
+      
       // Сначала загружаем данные из локального хранилища для быстрого отображения
       final storedData = storage.read<Map<String, dynamic>>('userProfile');
       if (storedData != null && storedData.isNotEmpty) {
@@ -34,12 +42,28 @@ class ProfileController extends GetxController {
         phone.value = storedData['phone']?.toString().trim() ?? '';
         deliveryPoint.value = storedData['deliveryPoint']?.toString().trim() ?? '';
         profileImage.value = storedData['profileImage']?.toString().trim() ?? '';
+        
+        // Отладочная информация
+        print('✅ Данные профиля загружены из локального хранилища:');
+        print('   - firstName: ${firstName.value}');
+        print('   - lastName: ${lastName.value}');
+        print('   - email: ${email.value}');
+        print('   - phone: ${phone.value}');
+        
+        // Проверяем, что email совпадает с текущим пользователем
+        if (email.value.isNotEmpty && currentEmail != 'unknown' && email.value != currentEmail) {
+          print('⚠️ ВНИМАНИЕ: Email профиля не совпадает с текущим пользователем!');
+          print('   - Email профиля: ${email.value}');
+          print('   - Email текущего пользователя: $currentEmail');
+        }
       } else {
         // Если данных нет, пробуем получить email из хранилища авторизации
         final authEmail = storage.read<String>('email');
         if (authEmail != null && authEmail.isNotEmpty) {
           email.value = authEmail;
         }
+        
+        print('⚠️ Данные профиля не найдены в локальном хранилище');
       }
 
       // Пытаемся загрузить актуальные данные с сервера
@@ -77,13 +101,20 @@ class ProfileController extends GetxController {
 
   /// Обновление данных из API
   void updateProfileFromApi(Map<String, dynamic> data) {
-    firstName.value = data['firstName'];
-    lastName.value = data['lastName'];
-    email.value = data['email'];
-    phone.value = data['phone'];
-    deliveryPoint.value = data['deliveryPoint'];
-    profileImage.value = data['profileImage'];
+    // Обновляем только те поля, которые пришли с сервера
+    // Сохраняем существующие данные, если сервер их не вернул
+    firstName.value = data['firstName']?.toString().trim() ?? firstName.value;
+    lastName.value = data['lastName']?.toString().trim() ?? lastName.value;
+    email.value = data['email']?.toString().trim() ?? email.value;
+    phone.value = data['phone']?.toString().trim() ?? phone.value;
+    deliveryPoint.value = data['deliveryPoint']?.toString().trim() ?? deliveryPoint.value;
+    profileImage.value = data['profileImage']?.toString().trim() ?? profileImage.value;
     saveProfileData(); // Сохраняем данные локально
+    
+    print('✅ Данные профиля обновлены из API:');
+    print('   - firstName: ${firstName.value}');
+    print('   - lastName: ${lastName.value}');
+    print('   - email: ${email.value}');
   }
 
   /// Сохранение данных профиля в локальное хранилище
@@ -115,10 +146,46 @@ class ProfileController extends GetxController {
     required String email,
     required String phone,
   }) async {
+    // СРАЗУ обновляем локальные данные для мгновенного отображения в UI
+    this.firstName.value = firstName;
+    this.lastName.value = lastName;
+    this.email.value = email;
+    this.phone.value = phone;
+    
+    // СРАЗУ сохраняем в локальное хранилище
+    saveProfileData();
+    
+    // Обновляем email в хранилище авторизации, если он изменился
+    final currentAuthEmail = storage.read<String>('email');
+    if (currentAuthEmail != null && currentAuthEmail != email) {
+      storage.write('email', email);
+      print('✅ Email в хранилище авторизации обновлен: $email');
+    }
+    
+    print('✅ Данные профиля обновлены локально и отображаются в UI');
+    print('   - firstName: $firstName');
+    print('   - lastName: $lastName');
+    print('   - email: $email');
+    print('   - phone: $phone');
+
     try {
       isLoading.value = true;
 
-      // Отправляем данные на сервер
+      // Получаем текущую роль и токен для отладки
+      final currentRole = storage.read<String>('role') ?? 'unknown';
+      final token = storage.read<String>('token');
+      
+      print('📤 Отправка данных на сервер:');
+      print('   - Роль: $currentRole');
+      print('   - Токен: ${token != null ? "есть" : "отсутствует"}');
+
+      // Проверяем наличие токена
+      if (token == null || token.isEmpty) {
+        print('⚠️ Токен отсутствует! Данные сохранены только локально.');
+        return; // Данные уже сохранены локально выше
+      }
+
+      // Отправляем данные на сервер (в фоновом режиме)
       final response = await _authRepository.updateProfile(
         firstName: firstName,
         lastName: lastName,
@@ -126,40 +193,36 @@ class ProfileController extends GetxController {
         phone: phone.isNotEmpty ? phone : null,
       );
 
-      // Обновляем локальные данные
-      this.firstName.value = firstName;
-      this.lastName.value = lastName;
-      this.email.value = email;
-      this.phone.value = phone;
+      print('✅ Ответ сервера при обновлении профиля:');
+      print('   - Ключи в ответе: ${response.keys.toList()}');
+      print('   - response: $response');
 
-      // Обновляем данные из ответа сервера, если они есть
+      // Обновляем данные из ответа сервера, если они есть (может быть другая нормализация)
       if (response.isNotEmpty) {
         if (response['firstName'] != null) {
-          this.firstName.value = response['firstName'].toString();
+          this.firstName.value = response['firstName'].toString().trim();
         }
         if (response['lastName'] != null) {
-          this.lastName.value = response['lastName'].toString();
+          this.lastName.value = response['lastName'].toString().trim();
         }
         if (response['email'] != null) {
-          this.email.value = response['email'].toString();
+          this.email.value = response['email'].toString().trim();
         }
         if (response['phone'] != null) {
-          this.phone.value = response['phone'].toString();
+          this.phone.value = response['phone'].toString().trim();
         }
+        
+        // Сохраняем обновленные данные из сервера
+        saveProfileData();
+        
+        print('✅ Данные синхронизированы с сервером');
       }
-
-      // Сохраняем в локальное хранилище
-      saveProfileData();
     } catch (e) {
-      // Если не удалось отправить на сервер, все равно сохраняем локально
-      this.firstName.value = firstName;
-      this.lastName.value = lastName;
-      this.email.value = email;
-      this.phone.value = phone;
-      saveProfileData();
+      print('❌ Ошибка при отправке на сервер: $e');
+      print('✅ Данные остаются сохраненными локально и отображаются в UI');
       
-      // Пробрасываем ошибку дальше для обработки в UI
-      rethrow;
+      // НЕ пробрасываем ошибку, так как данные уже сохранены локально
+      // Пользователь видит обновленные данные, даже если сервер недоступен
     } finally {
       isLoading.value = false;
     }

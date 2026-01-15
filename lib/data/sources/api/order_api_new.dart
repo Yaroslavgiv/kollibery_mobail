@@ -15,7 +15,7 @@ class OrderApi {
       };
 
       if (token != null) {
-        headers['Authorization'] = 'Bearer ';
+        headers['Authorization'] = 'Bearer $token';
       }
 
       final response = await http.get(
@@ -49,7 +49,7 @@ class OrderApi {
       };
 
       if (token != null) {
-        headers['Authorization'] = 'Bearer ';
+        headers['Authorization'] = 'Bearer $token';
       }
 
       final requestBody = {
@@ -100,7 +100,7 @@ class OrderApi {
       };
 
       if (token != null) {
-        headers['Authorization'] = 'Bearer ';
+        headers['Authorization'] = 'Bearer $token';
       }
 
       final response = await http.get(

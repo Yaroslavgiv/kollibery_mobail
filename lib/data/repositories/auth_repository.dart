@@ -115,33 +115,120 @@ class AuthRepository {
       // Получаем токен из хранилища
       final box = GetStorage();
       final token = box.read<String>('token');
+      final role = box.read<String>('role') ?? 'unknown';
+      
+      print('📤 API: Обновление профиля');
+      print('   - Базовый URL: ${_dio.options.baseUrl}');
+      print('   - Роль: $role');
+      print('   - Токен: ${token != null ? "есть (${token.length} символов)" : "отсутствует"}');
       
       final headers = <String, String>{
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       };
       
-      if (token != null) {
+      if (token != null && token.isNotEmpty) {
         headers['Authorization'] = 'Bearer $token';
+      } else {
+        throw Exception('Токен авторизации отсутствует. Пожалуйста, войдите в систему заново.');
       }
 
-      final response = await _dio.put(
-        '/account/updateProfile',
-        data: {
-          "firstName": firstName,
-          "lastName": lastName,
-          "email": email,
-          if (phone != null && phone.isNotEmpty) "phone": phone,
-        },
-        options: Options(headers: headers),
-      );
+      final requestData = {
+        "firstName": firstName,
+        "lastName": lastName,
+        "email": email,
+        if (phone != null && phone.isNotEmpty) "phone": phone,
+      };
+      
+      print('   - Данные запроса: $requestData');
+      print('   - Заголовки: ${headers.keys.toList()}');
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('Ошибка обновления профиля. Код: ${response.statusCode}');
+      // Получаем userId для возможного использования в пути
+      final userId = box.read<String>('userId');
+      print('   - userId: ${userId ?? "не найден"}');
+      
+      // Пробуем несколько вариантов эндпоинтов
+      // Основной вариант - PUT /account/profile (стандартный REST)
+      final endpointsToTry = <String>[
+        '/account/profile',        // Вариант 1: стандартный REST (PUT /account/profile) - основной
+      ];
+      
+      // Если есть userId, добавляем варианты с userId
+      if (userId != null && userId.isNotEmpty) {
+        endpointsToTry.addAll([
+          '/account/profile/$userId',  // Вариант с userId в пути
+          '/account/$userId/profile',  // Альтернативный вариант с userId
+        ]);
+      }
+      
+      // Добавляем другие варианты
+      endpointsToTry.addAll([
+        '/account/updateProfile',  // Явный updateProfile
+        '/account/update',         // Короткий вариант
+        '/account/editProfile',    // Альтернативный вариант
+        '/account/edit',           // Еще один вариант
+      ]);
+
+      DioException? lastException;
+      
+      for (final endpoint in endpointsToTry) {
+        try {
+          print('   - Пробуем эндпоинт: PUT $endpoint');
+          
+          final response = await _dio.put(
+            endpoint,
+            data: requestData,
+            options: Options(headers: headers),
+          );
+
+          print('   - Статус ответа: ${response.statusCode}');
+          print('   - Данные ответа: ${response.data}');
+
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            return response.data ?? {};
+          }
+        } on DioException catch (e) {
+          print('   - Ошибка для $endpoint: ${e.response?.statusCode}');
+          lastException = e;
+          // Продолжаем пробовать другие эндпоинты, если это 404
+          if (e.response?.statusCode != 404) {
+            // Если это не 404, пробрасываем ошибку дальше
+            break;
+          }
+        }
       }
 
-      return response.data ?? {};
+      // Если все варианты не сработали, пробуем POST метод
+      print('   - Пробуем метод POST для /account/profile');
+      try {
+        final response = await _dio.post(
+          '/account/profile',
+          data: requestData,
+          options: Options(headers: headers),
+        );
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return response.data ?? {};
+        }
+      } on DioException catch (e) {
+        print('   - POST также не сработал: ${e.response?.statusCode}');
+        lastException = e;
+      }
+
+      // Если ничего не сработало, используем последнюю ошибку
+      if (lastException != null) {
+        // Пробрасываем последнюю ошибку для обработки ниже
+        throw lastException;
+      }
+
+      throw Exception('Не удалось найти рабочий эндпоинт для обновления профиля');
     } on DioException catch (e) {
+      print('❌ Ошибка DioException при обновлении профиля:');
+      print('   - Тип ошибки: ${e.type}');
+      print('   - Сообщение: ${e.message}');
+      print('   - Код ответа: ${e.response?.statusCode}');
+      print('   - Данные ответа: ${e.response?.data}');
+      
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout) {
@@ -151,12 +238,26 @@ class AuthRepository {
         throw Exception(
             'Ошибка подключения к серверу. Проверьте интернет-соединение.');
       } else if (e.response?.statusCode == 401) {
-        throw Exception('Требуется авторизация для обновления профиля.');
+        throw Exception('Требуется авторизация для обновления профиля. Пожалуйста, войдите в систему заново.');
       } else if (e.response?.statusCode == 400) {
-        throw Exception('Неверные данные для обновления профиля.');
+        final errorMessage = e.response?.data?.toString() ?? 'Неверные данные для обновления профиля.';
+        throw Exception('Неверные данные: $errorMessage');
+      } else if (e.response?.statusCode == 403) {
+        throw Exception('Недостаточно прав для обновления профиля.');
+      } else if (e.response?.statusCode == 404) {
+        throw Exception('Эндпоинт для обновления профиля не найден на сервере. Данные сохранены локально.');
       } else {
-        throw Exception('Ошибка при обновлении профиля: ${e.message}');
+        final errorMessage = e.response?.data?.toString() ?? e.message ?? 'Неизвестная ошибка';
+        throw Exception('Ошибка при обновлении профиля: $errorMessage');
       }
+    } catch (e) {
+      print('❌ Общая ошибка при обновлении профиля: $e');
+      // Если это не DioException, пробрасываем как есть
+      if (e is! DioException) {
+        rethrow;
+      }
+      // Для DioException уже обработано выше
+      throw Exception('Ошибка при обновлении профиля: ${e.toString()}');
     }
   }
 

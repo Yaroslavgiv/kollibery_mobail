@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:kollibry/routes/app_routes.dart';
 import '../../../common/styles/colors.dart';
 import '../../../common/themes/text_theme.dart';
@@ -16,12 +17,51 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final ProfileController profileController = Get.put(ProfileController());
+  // Используем Get.find() чтобы получить существующий экземпляр, или создаем новый
+  late final ProfileController profileController;
+  final GetStorage box = GetStorage();
+  
+  // Получаем текущую роль пользователя
+  String get _currentRole {
+    return box.read('role') ?? 'buyer';
+  }
+  
+  // Получаем название роли для отображения
+  String get _roleDisplayName {
+    switch (_currentRole) {
+      case 'buyer':
+        return 'Покупатель';
+      case 'seller':
+        return 'Продавец';
+      case 'technician':
+      case 'tech':
+        return 'Техник';
+      default:
+        return 'Пользователь';
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    // Пытаемся найти существующий контроллер, если нет - создаем новый
+    try {
+      profileController = Get.find<ProfileController>();
+    } catch (e) {
+      profileController = Get.put(ProfileController());
+    }
+    
     // Обновляем данные профиля при открытии экрана
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Всегда обновляем данные при открытии профиля, чтобы показать актуальную информацию
+      profileController.fetchProfileData();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Обновляем данные при возврате с экрана редактирования
     WidgetsBinding.instance.addPostFrameCallback((_) {
       profileController.fetchProfileData();
     });
@@ -32,10 +72,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: Text('Профиль',
-            style: TAppTheme
-                .lightTheme.appBarTheme.titleTextStyle // Заголовок из темы
-            ),
+        title: Text(
+          'Профиль - $_roleDisplayName',
+          style: TAppTheme
+              .lightTheme.appBarTheme.titleTextStyle // Заголовок из темы
+        ),
         backgroundColor: KColors.primary,
       ),
       body: Obx(() {
@@ -104,21 +145,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
 
-              // Точка доставки
+              // Точка доставки/отправки (в зависимости от роли)
               ListTile(
                 leading: Icon(Icons.location_on, color: KColors.primary),
                 title: Text(
                   profileController.deliveryPoint.value.isEmpty
-                      ? 'Точка доставки не установлена'
+                      ? (_currentRole == 'seller' 
+                          ? 'Точка отправки не установлена'
+                          : 'Точка доставки не установлена')
                       : profileController.deliveryPoint.value,
                   style:
-                      KTextTheme.lightTextTheme.headlineSmall, // Адрес доставки
+                      KTextTheme.lightTextTheme.headlineSmall, // Адрес доставки/отправки
                 ),
                 trailing: IconButton(
                   icon: Icon(Icons.edit, color: KColors.primary),
                   onPressed: () => Get.toNamed(
                     '/delivery-point',
-                    arguments: {'role': 'seller'},
+                    arguments: {'role': _currentRole},
                   ),
                 ),
               ),

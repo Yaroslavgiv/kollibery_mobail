@@ -8,23 +8,63 @@ class ProductApi {
   static final GetStorage _storage = GetStorage();
 
   static Future<List<ProductModel>> fetchProducts() async {
-    final token = _storage.read('token');
-    final headers = <String, String>{
-      'Content-Type': 'application/json',
-    };
-    if (token != null) {
-      headers['Authorization'] = 'Bearer $token';
-    }
+    try {
+      final token = _storage.read('token');
+      final role = _storage.read('role');
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+      };
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
 
-    final response = await http.get(
-      Uri.parse(PRODUCTS_URL),
-      headers: headers,
-    );
-    if (response.statusCode == 200) {
-      final List data = jsonDecode(response.body);
-      return data.map((item) => ProductModel.fromJson(item)).toList();
-    } else {
-      throw Exception('Ошибка загрузки товаров');
+      print('=== ЗАГРУЗКА ТОВАРОВ ===');
+      print('URL: $PRODUCTS_URL');
+      print('Role: $role');
+      print('Token: ${token != null ? "есть" : "нет"}');
+
+      final response = await http.get(
+        Uri.parse(PRODUCTS_URL),
+        headers: headers,
+      );
+
+      print('Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
+        print('✅ Загружено товаров: ${data.length}');
+        return data.map((item) => ProductModel.fromJson(item)).toList();
+      } else {
+        print('❌ Ошибка загрузки товаров: ${response.statusCode}');
+        print('Response: ${response.body}');
+        
+        String errorMessage = 'Ошибка загрузки товаров';
+        if (response.statusCode == 401) {
+          errorMessage = 'Ошибка авторизации. Пожалуйста, войдите в систему заново.';
+        } else if (response.statusCode == 403) {
+          errorMessage = 'Доступ запрещен. Проверьте права доступа.';
+        } else if (response.statusCode == 404) {
+          errorMessage = 'Товары не найдены.';
+        } else {
+          try {
+            final errorData = jsonDecode(response.body);
+            if (errorData is Map && errorData.containsKey('message')) {
+              errorMessage = 'Ошибка загрузки товаров: ${errorData['message']}';
+            }
+          } catch (e) {
+            errorMessage = 'Ошибка загрузки товаров (код: ${response.statusCode})';
+          }
+        }
+        
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      print('❌ Исключение при загрузке товаров: $e');
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Ошибка загрузки товаров: $e');
     }
   }
 

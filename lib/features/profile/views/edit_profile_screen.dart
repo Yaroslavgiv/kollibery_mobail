@@ -6,8 +6,16 @@ import '../../../common/themes/theme.dart';
 import '../../../utils/device/screen_util.dart';
 import '../controllers/profile_controller.dart';
 
-class EditProfileScreen extends StatelessWidget {
-  final ProfileController profileController = Get.find<ProfileController>();
+class EditProfileScreen extends StatefulWidget {
+  const EditProfileScreen({super.key});
+
+  @override
+  State<EditProfileScreen> createState() => _EditProfileScreenState();
+}
+
+class _EditProfileScreenState extends State<EditProfileScreen> {
+  // Получаем контроллер, создаем если не существует
+  late final ProfileController profileController;
 
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
@@ -15,12 +23,26 @@ class EditProfileScreen extends StatelessWidget {
   final TextEditingController phoneController = TextEditingController();
 
   @override
-  Widget build(BuildContext context) {
+  void initState() {
+    super.initState();
+    // Пытаемся найти существующий контроллер, если нет - создаем новый
+    try {
+      profileController = Get.find<ProfileController>();
+    } catch (e) {
+      profileController = Get.put(ProfileController());
+    }
+    
     // Заполняем текстовые поля текущими данными пользователя
-    firstNameController.text = profileController.firstName.value;
-    lastNameController.text = profileController.lastName.value;
-    emailController.text = profileController.email.value;
-    phoneController.text = profileController.phone.value;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      firstNameController.text = profileController.firstName.value;
+      lastNameController.text = profileController.lastName.value;
+      emailController.text = profileController.email.value;
+      phoneController.text = profileController.phone.value;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
 
     return Scaffold(
       appBar: AppBar(
@@ -136,24 +158,28 @@ class EditProfileScreen extends StatelessWidget {
                             return;
                           }
 
-                          try {
-                            // Обновляем данные профиля
-                            await profileController.updateProfile(
-                              firstName: firstNameController.text.trim(),
-                              lastName: lastNameController.text.trim(),
-                              email: emailController.text.trim(),
-                              phone: phoneController.text.trim(),
-                            );
+                          // Обновляем данные профиля (данные сразу сохраняются локально)
+                          await profileController.updateProfile(
+                            firstName: firstNameController.text.trim(),
+                            lastName: lastNameController.text.trim(),
+                            email: emailController.text.trim(),
+                            phone: phoneController.text.trim(),
+                          );
 
-                            // Возвращаемся на предыдущий экран
-                            Get.back();
-                          } catch (e) {
-                            Get.snackbar(
-                              'Ошибка',
-                              'Не удалось обновить данные профиля: ${e.toString()}',
-                              snackPosition: SnackPosition.BOTTOM,
-                            );
-                          }
+                          // Показываем сообщение об успехе
+                          // Данные уже обновлены локально и отображаются в UI
+                          Get.snackbar(
+                            'Успех',
+                            'Данные профиля обновлены',
+                            snackPosition: SnackPosition.BOTTOM,
+                            backgroundColor: Colors.green,
+                            colorText: Colors.white,
+                            duration: Duration(seconds: 2),
+                          );
+
+                          // Возвращаемся на предыдущий экран
+                          // Данные уже обновлены и будут видны на экране профиля
+                          Get.back();
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: KColors.primary,

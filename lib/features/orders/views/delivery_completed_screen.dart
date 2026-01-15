@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import '../../../data/models/order_model.dart';
 import '../../../data/repositories/order_repository.dart';
 import '../../../common/styles/colors.dart';
 import '../../../common/widgets/swipe_confirm_dialog.dart';
+import '../../../routes/app_routes.dart';
 
 /// Экран завершения доставки для покупателя
 class DeliveryCompletedScreen extends StatefulWidget {
@@ -225,30 +227,35 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
   }
 
   void _toggleCargoBay() async {
+    // Сохраняем предыдущее состояние для возможного отката
+    final previousState = isDroneOpen;
+    
+    // Оптимистичное обновление: сразу меняем состояние и кнопку
     setState(() {
-      isOpeningDrone = true;
+      isDroneOpen = !isDroneOpen;
+      isOpeningDrone = false; // Сразу делаем кнопку активной, не ждем ответа сервера
     });
+    
     try {
       // Имитация открытия/закрытия отсека
       await Future.delayed(Duration(seconds: 1));
       
-      setState(() {
-        isDroneOpen = !isDroneOpen;
-      });
+      // Состояние уже обновлено оптимистично, ничего не делаем
     } catch (e) {
       print('❌ Ошибка при управлении отсеком: $e');
+      // Откатываем состояние при ошибке
+      if (mounted) {
+        setState(() {
+          isDroneOpen = previousState; // Возвращаем предыдущее состояние
+          isOpeningDrone = false;
+        });
+      }
       Get.snackbar(
         'Ошибка',
         'Не удалось управлять грузовым отсеком',
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          isOpeningDrone = false;
-        });
-      }
     }
   }
 
@@ -271,8 +278,18 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
       // Имитация задержки обработки
       await Future.delayed(Duration(milliseconds: 500));
       
-      // Возвращаемся на главный экран
-      Get.offAllNamed('/home');
+      // Проверяем роль пользователя для правильной навигации
+      final box = GetStorage();
+      final role = box.read('role') ?? 'buyer';
+      
+      // Возвращаемся на главный экран в зависимости от роли
+      if (role == 'technician' || role == 'tech') {
+        // Для техника возвращаемся на экран техника
+        Get.offAllNamed(AppRoutes.techHome);
+      } else {
+        // Для покупателя возвращаемся на домашний экран
+        Get.offAllNamed(AppRoutes.home);
+      }
       
       // Показываем сообщение об успехе
       Get.snackbar(

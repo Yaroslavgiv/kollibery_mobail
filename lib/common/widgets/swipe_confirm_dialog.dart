@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Универсальный диалог подтверждения действия с возможностью подтверждения свайпом
+/// Универсальный диалог подтверждения действия
 class SwipeConfirmDialog extends StatefulWidget {
   /// Заголовок диалога
   final String title;
@@ -70,61 +70,7 @@ class SwipeConfirmDialog extends StatefulWidget {
   State<SwipeConfirmDialog> createState() => _SwipeConfirmDialogState();
 }
 
-class _SwipeConfirmDialogState extends State<SwipeConfirmDialog>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  double _dragPosition = 0.0;
-  bool _isConfirmed = false;
-  final double _maxDragDistance = 200.0;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 300),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _onDragUpdate(DragUpdateDetails details) {
-    setState(() {
-      _dragPosition += details.primaryDelta ?? 0.0;
-      if (_dragPosition < 0) _dragPosition = 0;
-      if (_dragPosition > _maxDragDistance) {
-        _dragPosition = _maxDragDistance;
-        if (!_isConfirmed) {
-          _isConfirmed = true;
-          _controller.forward();
-        }
-      } else {
-        if (_isConfirmed) {
-          _isConfirmed = false;
-          _controller.reverse();
-        }
-      }
-    });
-  }
-
-  void _onDragEnd(DragEndDetails details) {
-    if (_dragPosition >= _maxDragDistance * 0.8) {
-      // Подтверждение при достижении 80% расстояния
-      _confirmAction();
-    } else {
-      // Возврат в исходное положение
-      setState(() {
-        _dragPosition = 0.0;
-        _isConfirmed = false;
-        _controller.reset();
-      });
-    }
-  }
-
+class _SwipeConfirmDialogState extends State<SwipeConfirmDialog> {
   void _confirmAction() {
     Navigator.of(context).pop(true);
     widget.onConfirm();
@@ -136,8 +82,6 @@ class _SwipeConfirmDialogState extends State<SwipeConfirmDialog>
 
   @override
   Widget build(BuildContext context) {
-    final progress = (_dragPosition / _maxDragDistance).clamp(0.0, 1.0);
-
     return AlertDialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
@@ -165,98 +109,13 @@ class _SwipeConfirmDialogState extends State<SwipeConfirmDialog>
           ),
         ],
       ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            widget.message,
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 24),
-          // Кнопка свайпа для подтверждения
-          Container(
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(
-                color: Colors.grey[400]!,
-                width: 2,
-              ),
-            ),
-            child: Stack(
-              children: [
-                // Фон прогресса
-                AnimatedContainer(
-                  duration: Duration(milliseconds: 100),
-                  decoration: BoxDecoration(
-                    color: widget.confirmColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  width: _dragPosition,
-                ),
-                // Кнопка свайпа
-                Positioned(
-                  left: _dragPosition.clamp(0.0, _maxDragDistance - 56),
-                  child: GestureDetector(
-                    onHorizontalDragUpdate: _onDragUpdate,
-                    onHorizontalDragEnd: _onDragEnd,
-                    child: Container(
-                      width: 56,
-                      height: 56,
-                      margin: EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Color.lerp(
-                          widget.confirmColor,
-                          Colors.green,
-                          progress,
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        _isConfirmed ? Icons.check : Icons.arrow_forward,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                ),
-                // Текст инструкции
-                Center(
-                  child: Text(
-                    _isConfirmed
-                        ? 'Отпустите для подтверждения'
-                        : 'Свайпните для подтверждения',
-                    style: TextStyle(
-                      color: Colors.black87,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Или используйте кнопки ниже',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 12,
-            ),
-          ),
-        ],
+      content: Text(
+        widget.message,
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 16,
+        ),
+        textAlign: TextAlign.center,
       ),
       actions: [
         TextButton(

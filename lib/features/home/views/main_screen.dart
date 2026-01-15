@@ -25,7 +25,8 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   final CartController cartController = Get.put(CartController());
-  final ProfileController profileController = Get.put(ProfileController());
+  // Пытаемся найти существующий контроллер, если нет - создаем новый
+  late final ProfileController profileController;
   final AuthController authController = Get.put(AuthController());
   final GetStorage box = GetStorage();
 
@@ -34,6 +35,22 @@ class _MainScreenState extends State<MainScreen> {
     OrderListScreen(),
     CartScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Пытаемся найти существующий контроллер, если нет - создаем новый
+    try {
+      profileController = Get.find<ProfileController>();
+    } catch (e) {
+      profileController = Get.put(ProfileController());
+    }
+    
+    // Загружаем данные профиля при инициализации экрана
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      profileController.fetchProfileData();
+    });
+  }
 
   String _getRoleDisplayName() {
     final role = box.read('role') ?? 'buyer';
@@ -90,6 +107,11 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Обновляем данные профиля при открытии экрана
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      profileController.fetchProfileData();
+    });
+    
     return Scaffold(
       backgroundColor: TAppTheme.lightTheme.scaffoldBackgroundColor,
       drawer: Drawer(
@@ -134,7 +156,12 @@ class _MainScreenState extends State<MainScreen> {
                         SizedBox(height: ScreenUtil.adaptiveHeight(10)),
                         // Имя и фамилия
                         Text(
-                          '${profileController.firstName.value} ${profileController.lastName.value}',
+                          (profileController.firstName.value.isNotEmpty || 
+                           profileController.lastName.value.isNotEmpty)
+                              ? '${profileController.firstName.value} ${profileController.lastName.value}'.trim()
+                              : (profileController.email.value.isNotEmpty 
+                                  ? profileController.email.value.split('@')[0]
+                                  : 'Пользователь'),
                           style: KTextTheme.lightTextTheme.displaySmall,
                         ),
                         SizedBox(height: ScreenUtil.adaptiveHeight(5)),

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -25,7 +26,8 @@ class _SellerMainScreenState extends State<SellerMainScreen> {
   int _currentIndex = 0;
   final GetStorage box = GetStorage();
   final AuthController authController = Get.put(AuthController());
-  final ProfileController profileController = Get.put(ProfileController());
+  // Пытаемся найти существующий контроллер, если нет - создаем новый
+  late final ProfileController profileController;
 
   // Вкладки для продавца
   late List<Widget> _pages;
@@ -33,11 +35,23 @@ class _SellerMainScreenState extends State<SellerMainScreen> {
   @override
   void initState() {
     super.initState();
+    // Пытаемся найти существующий контроллер, если нет - создаем новый
+    try {
+      profileController = Get.find<ProfileController>();
+    } catch (e) {
+      profileController = Get.put(ProfileController());
+    }
+
     _pages = [
       SellerProductsScreen(),
       SellerOrdersScreen(),
       OrderHistoryScreen(),
     ];
+
+    // Загружаем данные профиля при инициализации экрана
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      profileController.fetchProfileData();
+    });
   }
 
   // Метод для обновления списка товаров
@@ -45,20 +59,6 @@ class _SellerMainScreenState extends State<SellerMainScreen> {
     setState(() {
       _pages[0] = SellerProductsScreen();
     });
-  }
-
-  String _getRoleDisplayName() {
-    final role = box.read('role') ?? 'seller';
-    switch (role) {
-      case 'buyer':
-        return 'Покупатель';
-      case 'seller':
-        return 'Продавец';
-      case 'tech':
-        return 'Техник';
-      default:
-        return 'Пользователь';
-    }
   }
 
   /// Показывает диалог подтверждения выхода
@@ -109,37 +109,58 @@ class _SellerMainScreenState extends State<SellerMainScreen> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: KColors.primary,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.person, size: 40, color: KColors.primary),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    _getRoleDisplayName(),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+            Obx(() {
+              // Обновляем данные профиля при открытии drawer
+              return DrawerHeader(
+                decoration: BoxDecoration(
+                  color: KColors.primary,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: Colors.white,
+                      backgroundImage:
+                          profileController.profileImage.value.isEmpty
+                              ? null
+                              : FileImage(
+                                  File(profileController.profileImage.value)),
+                      child: profileController.profileImage.value.isEmpty
+                          ? Icon(Icons.person, size: 40, color: KColors.primary)
+                          : null,
                     ),
-                  ),
-                  Text(
-                    box.read('email') ?? '',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
+                    SizedBox(height: 10),
+                    // Имя и фамилия
+                    Text(
+                      (profileController.firstName.value.isNotEmpty ||
+                              profileController.lastName.value.isNotEmpty)
+                          ? '${profileController.firstName.value} ${profileController.lastName.value}'
+                              .trim()
+                          : (profileController.email.value.isNotEmpty
+                              ? profileController.email.value.split('@')[0]
+                              : 'Пользователь'),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
+                    SizedBox(height: 5),
+                    // Email
+                    Text(
+                      profileController.email.value.isNotEmpty
+                          ? profileController.email.value
+                          : (box.read('email') ?? ''),
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
             ListTile(
               leading: Icon(Icons.person),
               title: Text('Профиль'),

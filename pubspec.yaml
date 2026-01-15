@@ -36,6 +36,7 @@ dependencies:
   flutter_map_tile_caching: ^10.1.0
   dio: ^5.8.0+1
   material_symbols_icons: ^4.2719.0
+  web_socket_channel: ^3.0.1
 
   
 

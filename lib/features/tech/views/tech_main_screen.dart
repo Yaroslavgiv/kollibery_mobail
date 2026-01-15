@@ -4,6 +4,7 @@ import 'package:get_storage/get_storage.dart';
 import '../../auth/controllers/auth_controller.dart';
 import 'tech_products_screen.dart';
 import 'tech_orders_screen.dart';
+import 'tech_drone_screen.dart';
 import 'tech_dronebox_screen.dart';
 import '../../../common/widgets/swipe_confirm_dialog.dart';
 
@@ -20,6 +21,7 @@ class _TechMainScreenState extends State<TechMainScreen> {
   final List<Widget> _screens = [
     TechProductsScreen(),
     TechOrdersScreen(),
+    TechDroneScreen(),
     TechDroneboxScreen(),
   ];
 
@@ -31,6 +33,7 @@ class _TechMainScreenState extends State<TechMainScreen> {
       case 'seller':
         return 'Продавец';
       case 'tech':
+      case 'technician':
         return 'Техник';
       default:
         return 'Техник';
@@ -68,16 +71,21 @@ class _TechMainScreenState extends State<TechMainScreen> {
       ),
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_cart),
-            label: 'Товары',
+            label: 'Покупатель',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.list_alt),
-            label: 'Заказы',
+            label: 'Продавец',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.flight),
+            label: 'Дрон',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings_remote),

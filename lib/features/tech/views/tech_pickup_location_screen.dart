@@ -97,12 +97,20 @@ class _TechPickupLocationScreenState extends State<TechPickupLocationScreen> {
         ),
       );
     });
-
-    // Показываем диалог с координатами и кнопками "Отмена" и "Вызвать дрон"
-    _showDroneCallDialog(point);
   }
 
-  void _showDroneCallDialog(LatLng point) {
+  void _confirmPickupLocation() {
+    if (_pickupMarker == null) {
+      Get.snackbar(
+        'Ошибка',
+        'Пожалуйста, выберите точку посадки дрона на карте',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    final point = _pickupMarker!.point;
     SwipeConfirmDialog.show(
       context: context,
       title: "Подтвердить точку посадки дрона",
@@ -148,9 +156,6 @@ class _TechPickupLocationScreenState extends State<TechPickupLocationScreen> {
           });
 
           _mapController.move(newPosition, 15.0);
-
-          // Показываем диалог после поиска адреса
-          _showDroneCallDialog(newPosition);
         }
       }
     } catch (e) {
@@ -245,13 +250,25 @@ class _TechPickupLocationScreenState extends State<TechPickupLocationScreen> {
               ],
             ),
           ),
+          /// Кнопка "Подтвердить геолокацию" отдельно от кнопок управления
+          if (_pickupMarker != null)
+            Positioned(
+              bottom: 20,
+              left: 20,
+              right: 20,
+              child: FloatingActionButton.extended(
+                onPressed: _confirmPickupLocation,
+                backgroundColor: Colors.blue,
+                icon: Icon(Icons.check),
+                label: Text("Подтвердить геолокацию"),
+              ),
+            ),
           if (_isLoading)
             Center(
               child: CircularProgressIndicator(),
             ),
         ],
       ),
-      // Убираем floatingActionButton с кнопкой "Подтвердить"
     );
   }
 }

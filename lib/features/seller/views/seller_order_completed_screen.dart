@@ -15,6 +15,7 @@ class SellerOrderCompletedScreen extends StatefulWidget {
 class _SellerOrderCompletedScreenState
     extends State<SellerOrderCompletedScreen> {
   bool isDroneOpen = false;
+  bool isOpeningDrone = false; // Флаг загрузки для кнопки открытия/закрытия отсека
   final OrderRepository _orderRepository = OrderRepository();
   final OrderHistoryRepository _historyRepository = OrderHistoryRepository();
   OrderModel? _orderData;
@@ -124,45 +125,100 @@ class _SellerOrderCompletedScreenState
                       child: SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: () async {
-                            try {
-                              // Вызываем API для открытия/закрытия бокса
-                              final response =
-                                  await FlightApi.openDroneBox(!isDroneOpen);
+                          onPressed: isOpeningDrone
+                              ? null
+                              : () async {
+                                  // Сохраняем предыдущее состояние для возможного отката
+                                  final previousState = isDroneOpen;
+                                  
+                                  // Оптимистичное обновление: сразу меняем состояние и кнопку
+                                  setState(() {
+                                    isDroneOpen = !isDroneOpen;
+                                    isOpeningDrone = false; // Сразу делаем кнопку активной, не ждем ответа сервера
+                                  });
+                                  
+                                  try {
+                                    // Вызываем API для открытия/закрытия бокса
+                                    final response =
+                                        await FlightApi.openDroneBox(!previousState); // Используем предыдущее состояние для запроса
 
-                              // Выводим ответ сервера в консоль
-                              print('Ответ сервера при управлении боксом:');
-                              print('Status Code: ${response.statusCode}');
-                              print('Response Body: ${response.body}');
+                                    // Выводим ответ сервера в консоль
+                                    print('Ответ сервера при управлении боксом:');
+                                    print('Status Code: ${response.statusCode}');
+                                    print('Response Body: ${response.body}');
 
-                              if (response.statusCode == 200) {
-                                final responseBody =
-                                    response.body.toLowerCase();
-                                if (responseBody.contains('успех') ||
-                                    responseBody.contains('success')) {
-                                  print(
-                                      '✅ Сервер вернул успешный ответ: ${response.body}');
-                                }
+                                    if (response.statusCode >= 200 && response.statusCode < 300) {
+                                      final responseBody =
+                                          response.body.toLowerCase();
+                                      if (responseBody.contains('успех') ||
+                                          responseBody.contains('success') ||
+                                          responseBody.contains('ok') ||
+                                          responseBody.isEmpty) {
+                                        print(
+                                            '✅ Сервер вернул успешный ответ: ${response.body}');
+                                      }
 
-                                setState(() {
-                                  isDroneOpen = !isDroneOpen;
-                                });
-                              } else {
-                                print(
-                                    '❌ Ошибка при управлении боксом: ${response.statusCode} - ${response.body}');
-                              }
-                            } catch (e) {
-                              print('❌ Исключение при управлении боксом: $e');
-                            }
-                          },
-                          icon: Icon(
-                            isDroneOpen
-                                ? Icons.arrow_upward
-                                : Icons.arrow_downward,
-                            size: 28,
-                          ),
+                                      // Состояние уже обновлено оптимистично, ничего не делаем
+                                    } else {
+                                      print(
+                                          '❌ Ошибка при управлении боксом: ${response.statusCode} - ${response.body}');
+                                      // Откатываем состояние при ошибке
+                                      if (mounted) {
+                                        setState(() {
+                                          isDroneOpen = previousState; // Возвращаем предыдущее состояние
+                                          isOpeningDrone = false;
+                                        });
+                                      }
+                                      Get.snackbar(
+                                        'Ошибка',
+                                        'Не удалось ${previousState ? 'закрыть' : 'открыть'} отсек. Код: ${response.statusCode}',
+                                        backgroundColor: Colors.red,
+                                        colorText: Colors.white,
+                                        duration: Duration(seconds: 3),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    print('❌ Исключение при управлении боксом: $e');
+                                    // Откатываем состояние при исключении
+                                    if (mounted) {
+                                      setState(() {
+                                        isDroneOpen = previousState; // Возвращаем предыдущее состояние
+                                        isOpeningDrone = false;
+                                      });
+                                    }
+                                    Get.snackbar(
+                                      'Ошибка',
+                                      'Ошибка сети: ${e.toString()}',
+                                      backgroundColor: Colors.red,
+                                      colorText: Colors.white,
+                                      duration: Duration(seconds: 3),
+                                    );
+                                  }
+                                },
+                          icon: isOpeningDrone
+                              ? SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
+                                  ),
+                                )
+                              : Icon(
+                                  isDroneOpen
+                                      ? Icons.arrow_upward
+                                      : Icons.arrow_downward,
+                                  size: 28,
+                                ),
                           label: Text(
-                            isDroneOpen ? 'Закрыть отсек' : 'Открыть отсек',
+                            isOpeningDrone
+                                ? (isDroneOpen
+                                    ? 'Закрываем...'
+                                    : 'Открываем...')
+                                : (isDroneOpen
+                                    ? 'Закрыть отсек'
+                                    : 'Открыть отсек'),
                             style: TextStyle(
                                 fontSize: 18, fontWeight: FontWeight.w600),
                           ),

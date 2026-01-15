@@ -142,6 +142,8 @@ class FlightApi {
   }
 
   // Функция для открытия/закрытия бокса дрона
+  // API: POST /flight/openbox
+  // Body: boolean (true - открыть, false - закрыть)
   static Future<http.Response> openDroneBox(bool isActive) async {
     // Получаем токен из локального хранилища
     final token = box.read('token');
@@ -156,13 +158,25 @@ class FlightApi {
       headers['Authorization'] = 'Bearer $token';
     }
 
-    print('Отправляем запрос с заголовками: $headers');
-    print('URL: ${API_BASE_URL}/flight/openbox?isActive=$isActive');
+    final uri = Uri.parse('${API_BASE_URL}/flight/openbox');
+    final body = jsonEncode(isActive);
+    
+    print('=== ОТКРЫТИЕ/ЗАКРЫТИЕ БОКСА ДРОНА ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    print('Body: $body');
 
-    return await http.post(
-      Uri.parse('${API_BASE_URL}/flight/openbox?isActive=$isActive'),
+    final response = await http.post(
+      uri,
       headers: headers,
+      body: body,
     );
+
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('Response Headers: ${response.headers}');
+
+    return response;
   }
 
   // Функция для проверки работоспособности системы
@@ -399,6 +413,245 @@ class FlightApi {
     }
     final uri = Uri.parse('${API_BASE_URL}/test/home');
     print('=== ВОЗВРАЩЕНИЕ НА БАЗУ ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    final response = await http.post(uri, headers: headers);
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    return response;
+  }
+
+  // ========== ДРОНБОКС API МЕТОДЫ ==========
+
+  // Управление крышей дронбокса
+  // API: POST /api/dron-box/roof
+  // Body: boolean (true - открыть, false - закрыть)
+  static Future<http.Response> controlRoof(bool isOpen) async {
+    final token = box.read('token');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final uri = Uri.parse('${API_BASE_URL}/api/dron-box/roof');
+    final body = jsonEncode(isOpen);
+    print('=== УПРАВЛЕНИЕ КРЫШЕЙ ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    print('Body: $body');
+    final response = await http.post(uri, headers: headers, body: body);
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    return response;
+  }
+
+  // Управление позицией дронбокса (центр/край)
+  // API: POST /api/dron-box/position
+  // Body: boolean (true - в центр, false - в край)
+  static Future<http.Response> controlPosition(bool isCenter) async {
+    final token = box.read('token');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final uri = Uri.parse('${API_BASE_URL}/api/dron-box/position');
+    final body = jsonEncode(isCenter);
+    print('=== УПРАВЛЕНИЕ ПОЗИЦИЕЙ ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    print('Body: $body');
+    final response = await http.post(uri, headers: headers, body: body);
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    return response;
+  }
+
+  // Управление столом дронбокса (вверх/вниз)
+  // API: POST /api/dron-box/table
+  // Body: boolean (true - вверх, false - вниз)
+  static Future<http.Response> controlTable(bool isUp) async {
+    final token = box.read('token');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final uri = Uri.parse('${API_BASE_URL}/api/dron-box/table');
+    final body = jsonEncode(isUp);
+    print('=== УПРАВЛЕНИЕ СТОЛОМ ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    print('Body: $body');
+    final response = await http.post(uri, headers: headers, body: body);
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    return response;
+  }
+
+  // Управление люком дронбокса
+  // API: POST /api/dron-box/hatch (или /dronebox/hatch)
+  // Body: boolean (true - открыть, false - закрыть)
+  static Future<http.Response> controlHatch(bool isOpen) async {
+    final token = box.read('token');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final uri = Uri.parse('${API_BASE_URL}/api/dron-box/hatch');
+    final body = jsonEncode(isOpen);
+    print('=== УПРАВЛЕНИЕ ЛЮКОМ ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    print('Body: $body');
+    final response = await http.post(uri, headers: headers, body: body);
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    return response;
+  }
+
+  // Управление батареей дрона в дронбоксе
+  // API: POST /api/dron-box/dronebattery (или /dronebox/dronebattery)
+  // Body: boolean (true - установить, false - снять)
+  static Future<http.Response> controlDroneBattery(bool isInstall) async {
+    final token = box.read('token');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final uri = Uri.parse('${API_BASE_URL}/api/dron-box/dronebattery');
+    final body = jsonEncode(isInstall);
+    print('=== УПРАВЛЕНИЕ БАТАРЕЕЙ ДРОНА ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    print('Body: $body');
+    final response = await http.post(uri, headers: headers, body: body);
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    return response;
+  }
+
+  // Управление батареей дронбокса (1-3)
+  // API: POST /api/dron-box/battery{batteryNumber} (или /dronebox/battery{batteryNumber})
+  // Body: строка с действием ('install', 'remove', 'charge', 'discharge')
+  static Future<http.Response> controlBoxBattery({
+    required int batteryNumber, // 1, 2, или 3
+    required String action, // 'install', 'remove', 'charge', 'discharge'
+  }) async {
+    final token = box.read('token');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final uri = Uri.parse('${API_BASE_URL}/api/dron-box/battery$batteryNumber');
+    final body = jsonEncode(action);
+    print('=== УПРАВЛЕНИЕ БАТАРЕЕЙ $batteryNumber ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    print('Body: $body');
+    final response = await http.post(uri, headers: headers, body: body);
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    return response;
+  }
+
+  // Стоп для дронбокса
+  static Future<http.Response> droneboxStop() async {
+    final token = box.read('token');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final uri = Uri.parse('${API_BASE_URL}/dronebox/stop');
+    print('=== СТОП ДРОНБОКСА ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    final response = await http.post(uri, headers: headers);
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    return response;
+  }
+
+  // Управление замком дрона
+  static Future<http.Response> controlDroneLock(bool isOpen) async {
+    final token = box.read('token');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final uri = Uri.parse('${API_BASE_URL}/drone/lock?isOpen=$isOpen');
+    print('=== УПРАВЛЕНИЕ ЗАМКОМ ДРОНА ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    final response = await http.post(uri, headers: headers);
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    return response;
+  }
+
+
+  // Посадка дрона
+  static Future<http.Response> droneLand() async {
+    final token = box.read('token');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final uri = Uri.parse('${API_BASE_URL}/drone/land');
+    print('=== ПОСАДКА ДРОНА ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    final response = await http.post(uri, headers: headers);
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    return response;
+  }
+
+  // Старт полета дрона
+  static Future<http.Response> droneStartFlight() async {
+    final token = box.read('token');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final uri = Uri.parse('${API_BASE_URL}/drone/start');
+    print('=== СТАРТ ПОЛЕТА ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    final response = await http.post(uri, headers: headers);
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    return response;
+  }
+
+  // Отмена полета дрона
+  static Future<http.Response> droneCancelFlight() async {
+    final token = box.read('token');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final uri = Uri.parse('${API_BASE_URL}/drone/cancel');
+    print('=== ОТМЕНА ПОЛЕТА ===');
     print('POST $uri');
     print('Headers: $headers');
     final response = await http.post(uri, headers: headers);

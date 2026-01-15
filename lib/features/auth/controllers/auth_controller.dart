@@ -61,6 +61,7 @@ class AuthController extends GetxController {
       box.write('roleByEmail:$email', role);
 
       // Сохраняем данные профиля в локальное хранилище
+      // Это гарантирует, что данные будут доступны даже если сервер не вернет их при автологине
       box.write('userProfile', {
         'firstName': firstName,
         'lastName': lastName,
@@ -69,6 +70,12 @@ class AuthController extends GetxController {
         'deliveryPoint': '', // Точка доставки устанавливается позже
         'profileImage': '', // Фото профиля загружается позже
       });
+      
+      // Отладочная информация для проверки сохранения
+      print('✅ Данные профиля сохранены при регистрации:');
+      print('   - firstName: $firstName');
+      print('   - lastName: $lastName');
+      print('   - email: $email');
 
       // Автоматически входим в систему после регистрации
       await autoLoginAfterRegistration(email, password, role);
@@ -118,15 +125,27 @@ String email, String password, String role) async {
       }
 
       // Обновляем данные профиля, если сервер их возвращает
+      // Важно: сохраняем данные из регистрации, если сервер их не вернул
       final existingProfile = box.read<Map<String, dynamic>>('userProfile') ?? {};
+      
+      // Получаем данные из ответа сервера или используем существующие данные из регистрации
+      final serverFirstName = userData['firstName']?.toString().trim();
+      final serverLastName = userData['lastName']?.toString().trim();
+      
       box.write('userProfile', {
-        'firstName': userData['firstName'] ?? existingProfile['firstName'] ?? '',
-        'lastName': userData['lastName'] ?? existingProfile['lastName'] ?? '',
-        'email': userData['email'] ?? email,
-        'phone': userData['phone'] ?? existingProfile['phone'] ?? '',
-        'deliveryPoint': userData['deliveryPoint'] ?? existingProfile['deliveryPoint'] ?? '',
-        'profileImage': userData['profileImage'] ?? existingProfile['profileImage'] ?? '',
+        'firstName': serverFirstName ?? existingProfile['firstName']?.toString().trim() ?? '',
+        'lastName': serverLastName ?? existingProfile['lastName']?.toString().trim() ?? '',
+        'email': userData['email']?.toString().trim() ?? email,
+        'phone': userData['phone']?.toString().trim() ?? existingProfile['phone']?.toString().trim() ?? '',
+        'deliveryPoint': userData['deliveryPoint']?.toString().trim() ?? existingProfile['deliveryPoint']?.toString().trim() ?? '',
+        'profileImage': userData['profileImage']?.toString().trim() ?? existingProfile['profileImage']?.toString().trim() ?? '',
       });
+      
+      // Убеждаемся, что данные профиля сохранены
+      print('✅ Данные профиля сохранены после автологина:');
+      print('   - firstName: ${box.read<Map<String, dynamic>>('userProfile')?['firstName']}');
+      print('   - lastName: ${box.read<Map<String, dynamic>>('userProfile')?['lastName']}');
+      print('   - email: ${box.read<Map<String, dynamic>>('userProfile')?['email']}');
 
       // Перенаправляем согласно роли
       if (role == 'seller') {
@@ -211,15 +230,22 @@ String email, String password, String role) async {
       }
 
       // Сохраняем или обновляем данные профиля из ответа сервера
+      // Важно: сохраняем существующие данные, если сервер их не вернул
       final existingProfile = box.read<Map<String, dynamic>>('userProfile') ?? {};
       box.write('userProfile', {
-        'firstName': userData['firstName'] ?? existingProfile['firstName'] ?? '',
-        'lastName': userData['lastName'] ?? existingProfile['lastName'] ?? '',
-        'email': userData['email'] ?? email,
-        'phone': userData['phone'] ?? existingProfile['phone'] ?? '',
-        'deliveryPoint': userData['deliveryPoint'] ?? existingProfile['deliveryPoint'] ?? '',
-        'profileImage': userData['profileImage'] ?? existingProfile['profileImage'] ?? '',
+        'firstName': userData['firstName']?.toString().trim() ?? existingProfile['firstName']?.toString().trim() ?? '',
+        'lastName': userData['lastName']?.toString().trim() ?? existingProfile['lastName']?.toString().trim() ?? '',
+        'email': userData['email']?.toString().trim() ?? email,
+        'phone': userData['phone']?.toString().trim() ?? existingProfile['phone']?.toString().trim() ?? '',
+        'deliveryPoint': userData['deliveryPoint']?.toString().trim() ?? existingProfile['deliveryPoint']?.toString().trim() ?? '',
+        'profileImage': userData['profileImage']?.toString().trim() ?? existingProfile['profileImage']?.toString().trim() ?? '',
       });
+      
+      // Отладочная информация для проверки сохранения
+      print('✅ Данные профиля сохранены после логина:');
+      print('   - firstName: ${box.read<Map<String, dynamic>>('userProfile')?['firstName']}');
+      print('   - lastName: ${box.read<Map<String, dynamic>>('userProfile')?['lastName']}');
+      print('   - email: ${box.read<Map<String, dynamic>>('userProfile')?['email']}');
 
       // Перенаправляем согласно роли
       final userRole = userData['role'] ?? box.read('role') ?? 'buyer';
@@ -280,6 +306,8 @@ String email, String password, String role) async {
     }
     box.remove('email');
     box.remove('userId');
+    // Очищаем данные профиля при выходе, чтобы следующий пользователь не видел чужие данные
+    box.remove('userProfile');
     Get.offAllNamed(AppRoutes.login);
   }
 
