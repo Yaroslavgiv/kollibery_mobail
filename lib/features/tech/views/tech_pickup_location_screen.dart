@@ -6,7 +6,6 @@ import "package:get/get.dart";
 import "package:location/location.dart";
 import "package:http/http.dart" as http;
 import "../../../data/models/order_model.dart";
-import "../../../common/widgets/swipe_confirm_dialog.dart";
 
 /// Экран выбора точки посадки дрона для техника
 class TechPickupLocationScreen extends StatefulWidget {
@@ -110,19 +109,8 @@ class _TechPickupLocationScreenState extends State<TechPickupLocationScreen> {
       return;
     }
 
-    final point = _pickupMarker!.point;
-    SwipeConfirmDialog.show(
-      context: context,
-      title: "Подтвердить точку посадки дрона",
-      message: "Выбранные координаты:\nШирота: ${point.latitude.toStringAsFixed(6)}\nДолгота: ${point.longitude.toStringAsFixed(6)}\n\nВызвать дрон к этой точке?",
-      confirmText: "Вызвать дрон",
-      confirmColor: Colors.blue,
-      icon: Icons.flight_takeoff,
-      onConfirm: () {
-        // Переход к экрану статусов отправки заказа
-        Get.toNamed("/tech-delivery-status", arguments: widget.orderData);
-      },
-    );
+    // Переход к экрану статусов отправки заказа
+    Get.toNamed("/tech-delivery-status", arguments: widget.orderData);
   }
 
   Future<void> _searchAddress() async {

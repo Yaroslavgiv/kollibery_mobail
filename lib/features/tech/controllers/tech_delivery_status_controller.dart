@@ -62,16 +62,7 @@ class TechDeliveryStatusController extends GetxController {
                 ElevatedButton(
                   onPressed: () {
                     Get.back();
-                    SwipeConfirmDialog.show(
-                      context: Get.context!,
-                      title: 'Открыть грузовой отсек',
-                      message:
-                          'Вы уверены, что хотите открыть грузовой отсек дрона?',
-                      confirmText: 'Открыть',
-                      confirmColor: Colors.green,
-                      icon: Icons.lock_open,
-                      onConfirm: _openCargoBay,
-                    );
+                    _openCargoBay();
                   },
                   child: Text("Открыть грузовой отсек"),
                   style: ElevatedButton.styleFrom(
@@ -82,16 +73,7 @@ class TechDeliveryStatusController extends GetxController {
                 ElevatedButton(
                   onPressed: () {
                     Get.back();
-                    SwipeConfirmDialog.show(
-                      context: Get.context!,
-                      title: 'Закрыть грузовой отсек',
-                      message:
-                          'Вы уверены, что хотите закрыть грузовой отсек дрона?',
-                      confirmText: 'Закрыть',
-                      confirmColor: Colors.orange,
-                      icon: Icons.lock,
-                      onConfirm: _closeCargoBay,
-                    );
+                    _closeCargoBay();
                   },
                   child: Text("Закрыть грузовой отсек"),
                   style: ElevatedButton.styleFrom(

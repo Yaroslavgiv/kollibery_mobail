@@ -15,7 +15,8 @@ class SellerOrderCompletedScreen extends StatefulWidget {
 class _SellerOrderCompletedScreenState
     extends State<SellerOrderCompletedScreen> {
   bool isDroneOpen = false;
-  bool isOpeningDrone = false; // Флаг загрузки для кнопки открытия/закрытия отсека
+  bool isOpeningDrone =
+      false; // Флаг загрузки для кнопки открытия/закрытия отсека
   final OrderRepository _orderRepository = OrderRepository();
   final OrderHistoryRepository _historyRepository = OrderHistoryRepository();
   OrderModel? _orderData;
@@ -125,76 +126,7 @@ class _SellerOrderCompletedScreenState
                       child: SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: isOpeningDrone
-                              ? null
-                              : () async {
-                                  // Сохраняем предыдущее состояние для возможного отката
-                                  final previousState = isDroneOpen;
-                                  
-                                  // Оптимистичное обновление: сразу меняем состояние и кнопку
-                                  setState(() {
-                                    isDroneOpen = !isDroneOpen;
-                                    isOpeningDrone = false; // Сразу делаем кнопку активной, не ждем ответа сервера
-                                  });
-                                  
-                                  try {
-                                    // Вызываем API для открытия/закрытия бокса
-                                    final response =
-                                        await FlightApi.openDroneBox(!previousState); // Используем предыдущее состояние для запроса
-
-                                    // Выводим ответ сервера в консоль
-                                    print('Ответ сервера при управлении боксом:');
-                                    print('Status Code: ${response.statusCode}');
-                                    print('Response Body: ${response.body}');
-
-                                    if (response.statusCode >= 200 && response.statusCode < 300) {
-                                      final responseBody =
-                                          response.body.toLowerCase();
-                                      if (responseBody.contains('успех') ||
-                                          responseBody.contains('success') ||
-                                          responseBody.contains('ok') ||
-                                          responseBody.isEmpty) {
-                                        print(
-                                            '✅ Сервер вернул успешный ответ: ${response.body}');
-                                      }
-
-                                      // Состояние уже обновлено оптимистично, ничего не делаем
-                                    } else {
-                                      print(
-                                          '❌ Ошибка при управлении боксом: ${response.statusCode} - ${response.body}');
-                                      // Откатываем состояние при ошибке
-                                      if (mounted) {
-                                        setState(() {
-                                          isDroneOpen = previousState; // Возвращаем предыдущее состояние
-                                          isOpeningDrone = false;
-                                        });
-                                      }
-                                      Get.snackbar(
-                                        'Ошибка',
-                                        'Не удалось ${previousState ? 'закрыть' : 'открыть'} отсек. Код: ${response.statusCode}',
-                                        backgroundColor: Colors.red,
-                                        colorText: Colors.white,
-                                        duration: Duration(seconds: 3),
-                                      );
-                                    }
-                                  } catch (e) {
-                                    print('❌ Исключение при управлении боксом: $e');
-                                    // Откатываем состояние при исключении
-                                    if (mounted) {
-                                      setState(() {
-                                        isDroneOpen = previousState; // Возвращаем предыдущее состояние
-                                        isOpeningDrone = false;
-                                      });
-                                    }
-                                    Get.snackbar(
-                                      'Ошибка',
-                                      'Ошибка сети: ${e.toString()}',
-                                      backgroundColor: Colors.red,
-                                      colorText: Colors.white,
-                                      duration: Duration(seconds: 3),
-                                    );
-                                  }
-                                },
+                          onPressed: _toggleCargoBay,
                           icon: isOpeningDrone
                               ? SizedBox(
                                   width: 24,
@@ -350,5 +282,89 @@ class _SellerOrderCompletedScreenState
         }
       },
     );
+  }
+
+  void _toggleCargoBay() async {
+    print(
+        '🔄 Начало открытия/закрытия отсека. Текущее состояние: isDroneOpen=$isDroneOpen');
+
+    // Сохраняем предыдущее состояние для возможного отката
+    final previousState = isDroneOpen;
+
+    // Оптимистичное обновление: сразу меняем состояние и кнопку
+    setState(() {
+      isDroneOpen = !isDroneOpen;
+      isOpeningDrone =
+          false; // Сразу делаем кнопку активной, не ждем ответа сервера
+    });
+    print('✅ Состояние обновлено оптимистично. isDroneOpen=$isDroneOpen');
+
+    try {
+      // Вызываем API для открытия/закрытия отсека
+      final response = await FlightApi.openDroneBox(
+          !previousState); // Используем предыдущее состояние для запроса
+
+      // Выводим ответ сервера в консоль
+      print('📥 Ответ сервера при управлении грузовым отсеком:');
+      print('   Status Code: ${response.statusCode}');
+      print('   Response Body: ${response.body}');
+      print('   Response Headers: ${response.headers}');
+
+      // Принимаем успешным любой статус от 200 до 299
+      // Также обрабатываем случаи, когда сервер может вернуть другой статус, но операция выполнена
+      final responseBody = response.body.toLowerCase();
+      final isSuccessResponse =
+          response.statusCode >= 200 && response.statusCode < 300;
+      final hasSuccessKeyword = responseBody.contains('успех') ||
+          responseBody.contains('success') ||
+          responseBody.contains('ok') ||
+          responseBody.isEmpty; // Пустой ответ тоже может быть успешным
+
+      if (isSuccessResponse || hasSuccessKeyword) {
+        if (hasSuccessKeyword) {
+          print('✅ Сервер вернул успешный ответ: ${response.body}');
+        }
+
+        print('✅ Успешно! Состояние подтверждено: isDroneOpen=$isDroneOpen');
+        // Состояние уже обновлено оптимистично, ничего не делаем
+      } else {
+        print(
+            '❌ Ошибка при управлении отсеком: ${response.statusCode} - ${response.body}');
+        // Откатываем состояние при ошибке
+        if (mounted) {
+          setState(() {
+            isDroneOpen = previousState; // Возвращаем предыдущее состояние
+            isOpeningDrone = false;
+          });
+          print('⚠️ Состояние откачено. isDroneOpen=$isDroneOpen');
+        }
+        Get.snackbar(
+          'Ошибка',
+          'Не удалось ${previousState ? 'закрыть' : 'открыть'} отсек. Код: ${response.statusCode}',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: Duration(seconds: 3),
+        );
+      }
+    } catch (e) {
+      print('❌ Исключение при управлении отсеком: $e');
+      print('   Stack trace: ${StackTrace.current}');
+      // Откатываем состояние при исключении
+      if (mounted) {
+        setState(() {
+          isDroneOpen = previousState; // Возвращаем предыдущее состояние
+          isOpeningDrone = false;
+        });
+        print(
+            '⚠️ Состояние откачено из-за исключения. isDroneOpen=$isDroneOpen');
+      }
+      Get.snackbar(
+        'Ошибка',
+        'Ошибка сети: ${e.toString()}',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: Duration(seconds: 3),
+      );
+    }
   }
 }

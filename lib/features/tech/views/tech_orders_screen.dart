@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import '../../../data/repositories/order_repository.dart';
 import '../../../data/models/order_model.dart';
 import '../../../utils/helpers/hex_image.dart';
-import '../../../common/widgets/swipe_confirm_dialog.dart';
 
 class TechOrdersScreen extends StatefulWidget {
   @override
@@ -446,19 +445,8 @@ class _TechOrdersScreenState extends State<TechOrdersScreen>
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                SwipeConfirmDialog.show(
-                  context: context,
-                  title: 'Взять заказ в работу',
-                  message:
-                      'Вы уверены, что хотите взять заказ #${order.id} в работу?',
-                  confirmText: 'Взять в работу',
-                  confirmColor: Colors.blue,
-                  icon: Icons.work,
-                  onConfirm: () {
-                    // Переходим к экрану выбора точки посадки дрона
-                    Get.toNamed('/tech-pickup-location', arguments: order);
-                  },
-                );
+                // Переходим к экрану выбора точки посадки дрона
+                Get.toNamed('/tech-pickup-location', arguments: order);
               },
               child: Text('Взять в работу'),
               style: ElevatedButton.styleFrom(

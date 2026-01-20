@@ -5,7 +5,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
 
 import '../../../data/repositories/flight_repository.dart';
-import '../../../common/widgets/swipe_confirm_dialog.dart';
 
 class TechAutopilotPickScreen extends StatefulWidget {
   @override
@@ -152,17 +151,13 @@ class _TechAutopilotPickScreenState extends State<TechAutopilotPickScreen> {
         waypoints: waypoints,
       );
 
-      final orderLocationOk = orderLocationResp.statusCode >= 200 && orderLocationResp.statusCode < 300;
-      final pointCount = 2 + (_waypoints.length); // Старт + финиш + промежуточные
+      final orderLocationOk = orderLocationResp.statusCode >= 200 &&
+          orderLocationResp.statusCode < 300;
       
       if (orderLocationOk) {
         Get.back();
       } else {
         // Показываем подробную информацию об ошибке
-        final errorMessage = orderLocationResp.body.isNotEmpty 
-            ? orderLocationResp.body 
-            : 'HTTP ${orderLocationResp.statusCode}';
-        
         print('Ошибка отправки маршрута:');
         print('Status Code: ${orderLocationResp.statusCode}');
         print('Response Body: ${orderLocationResp.body}');
@@ -420,20 +415,10 @@ class _TechAutopilotPickScreenState extends State<TechAutopilotPickScreen> {
                         if (_waypoints.isNotEmpty || _endPoint != null)
                           ElevatedButton.icon(
                             onPressed: () {
-                              SwipeConfirmDialog.show(
-                                context: context,
-                                title: 'Очистить маршрут',
-                                message: 'Вы уверены, что хотите удалить все точки маршрута?',
-                                confirmText: 'Очистить',
-                                confirmColor: Colors.grey,
-                                icon: Icons.delete_outline,
-                                onConfirm: () {
-                                  setState(() {
-                                    _waypoints.clear();
-                                    _endPoint = null;
-                                  });
-                                },
-                              );
+                              setState(() {
+                                _waypoints.clear();
+                                _endPoint = null;
+                              });
                             },
                             icon: Icon(Icons.delete_outline, size: 18),
                             label: Text('Очистить'),
@@ -444,17 +429,7 @@ class _TechAutopilotPickScreenState extends State<TechAutopilotPickScreen> {
                           ),
                         if (_endPoint != null)
                           ElevatedButton.icon(
-                            onPressed: _sending ? null : () {
-                              SwipeConfirmDialog.show(
-                                context: context,
-                                title: 'Отправить маршрут',
-                                message: 'Отправить маршрут автопилота с ${_waypoints.length + 2} точками (старт + ${_waypoints.length} промежуточных + финиш)?',
-                                confirmText: 'Отправить',
-                                confirmColor: Colors.green,
-                                icon: Icons.send,
-                                onConfirm: _sendCoords,
-                              );
-                            },
+                            onPressed: _sending ? null : _sendCoords,
                             icon: Icon(Icons.send, size: 18),
                             label: Text('Отправить'),
                             style: ElevatedButton.styleFrom(

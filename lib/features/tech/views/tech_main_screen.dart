@@ -6,7 +6,6 @@ import 'tech_products_screen.dart';
 import 'tech_orders_screen.dart';
 import 'tech_drone_screen.dart';
 import 'tech_dronebox_screen.dart';
-import '../../../common/widgets/swipe_confirm_dialog.dart';
 
 class TechMainScreen extends StatefulWidget {
   @override
@@ -40,19 +39,8 @@ class _TechMainScreenState extends State<TechMainScreen> {
     }
   }
 
-  /// Показывает диалог подтверждения выхода
-  void _showLogoutDialog() {
-    SwipeConfirmDialog.show(
-      context: context,
-      title: "Выход из аккаунта",
-      message: "Вы уверены, что хотите выйти из аккаунта?",
-      confirmText: "Выйти",
-      confirmColor: Colors.red,
-      icon: Icons.logout,
-      onConfirm: () {
-        authController.logout();
-      },
-    );
+  void _logout() {
+    authController.logout();
   }
 
   @override
@@ -64,7 +52,7 @@ class _TechMainScreenState extends State<TechMainScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.logout, color: Colors.white),
-            onPressed: _showLogoutDialog,
+            onPressed: _logout,
             tooltip: 'Выйти из аккаунта',
           ),
         ],

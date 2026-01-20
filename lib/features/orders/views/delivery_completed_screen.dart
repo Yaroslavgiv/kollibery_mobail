@@ -6,13 +6,15 @@ import '../../../data/repositories/order_repository.dart';
 import '../../../common/styles/colors.dart';
 import '../../../common/widgets/swipe_confirm_dialog.dart';
 import '../../../routes/app_routes.dart';
+import '../../../data/sources/api/flight_api.dart';
 
 /// Экран завершения доставки для покупателя
 class DeliveryCompletedScreen extends StatefulWidget {
   const DeliveryCompletedScreen({Key? key}) : super(key: key);
 
   @override
-  State<DeliveryCompletedScreen> createState() => _DeliveryCompletedScreenState();
+  State<DeliveryCompletedScreen> createState() =>
+      _DeliveryCompletedScreenState();
 }
 
 class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
@@ -21,6 +23,7 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
   bool isReceivingOrder = false;
   final OrderRepository _orderRepository = OrderRepository();
   OrderModel? _orderData;
+  bool _isTechnician = false;
 
   @override
   void initState() {
@@ -30,6 +33,9 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
     if (arguments != null && arguments is OrderModel) {
       _orderData = arguments;
     }
+    final box = GetStorage();
+    final role = box.read('role') ?? 'buyer';
+    _isTechnician = role == 'technician' || role == 'tech';
   }
 
   @override
@@ -45,7 +51,8 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 44),
+          padding:
+              const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 44),
           child: Column(
             children: [
               SizedBox(
@@ -57,7 +64,8 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       color: Colors.grey[200],
-                      child: Icon(Icons.local_shipping, size: 100, color: Colors.grey[400]),
+                      child: Icon(Icons.local_shipping,
+                          size: 100, color: Colors.grey[400]),
                     );
                   },
                 ),
@@ -86,15 +94,18 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
                     color: isDroneOpen ? Colors.green : Colors.grey.shade400,
                     width: 2,
                   ),
-                  color: isDroneOpen ? Colors.green.shade50 : Colors.grey.shade50,
+                  color:
+                      isDroneOpen ? Colors.green.shade50 : Colors.grey.shade50,
                 ),
                 child: Column(
                   children: [
                     // Индикатор состояния
                     Container(
-                      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      padding:
+                          EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                       decoration: BoxDecoration(
-                        color: isDroneOpen ? Colors.green : Colors.grey.shade300,
+                        color:
+                            isDroneOpen ? Colors.green : Colors.grey.shade300,
                         borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(10),
                           topRight: Radius.circular(10),
@@ -126,43 +137,39 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
                       child: SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: isOpeningDrone
-                              ? null
-                              : () {
-                                  SwipeConfirmDialog.show(
-                                    context: context,
-                                    title: isDroneOpen ? 'Закрыть грузовой отсек' : 'Открыть грузовой отсек',
-                                    message: 'Вы уверены, что хотите ${isDroneOpen ? 'закрыть' : 'открыть'} грузовой отсек дрона?',
-                                    confirmText: isDroneOpen ? 'Закрыть' : 'Открыть',
-                                    confirmColor: isDroneOpen ? Colors.orange.shade600 : Colors.green.shade600,
-                                    icon: isDroneOpen ? Icons.lock : Icons.lock_open,
-                                    onConfirm: () async {
-                                      _toggleCargoBay();
-                                    },
-                                  );
-                                },
+                          onPressed: _toggleCargoBay,
                           icon: isOpeningDrone
                               ? SizedBox(
                                   width: 24,
                                   height: 24,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2.5,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
                                   ),
                                 )
                               : Icon(
-                                  isDroneOpen ? Icons.arrow_upward : Icons.arrow_downward,
+                                  isDroneOpen
+                                      ? Icons.arrow_upward
+                                      : Icons.arrow_downward,
                                   size: 28,
                                 ),
                           label: Text(
                             isOpeningDrone
-                                ? (isDroneOpen ? 'Закрываем...' : 'Открываем...')
-                                : (isDroneOpen ? 'Закрыть отсек' : 'Открыть отсек'),
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                                ? (isDroneOpen
+                                    ? 'Закрываем...'
+                                    : 'Открываем...')
+                                : (isDroneOpen
+                                    ? 'Закрыть отсек'
+                                    : 'Открыть отсек'),
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.w600),
                           ),
                           style: ElevatedButton.styleFrom(
                             padding: EdgeInsets.symmetric(vertical: 18),
-                            backgroundColor: isDroneOpen ? Colors.orange.shade600 : Colors.green.shade600,
+                            backgroundColor: isDroneOpen
+                                ? Colors.orange.shade600
+                                : Colors.green.shade600,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -180,33 +187,35 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: isReceivingOrder || !isDroneOpen
-                      ? null
-                      : () {
-                          SwipeConfirmDialog.show(
-                            context: context,
-                            title: 'Подтвердить получение',
-                            message: 'Вы подтверждаете получение заказа? Заказ будет перемещен в историю.',
-                            confirmText: 'Подтвердить',
-                            confirmColor: KColors.primary,
-                            icon: Icons.check_circle,
-                            onConfirm: () {
-                              _confirmOrderReceived();
-                            },
-                          );
-                        },
-                  icon: isReceivingOrder
+                  onPressed: () {
+                    SwipeConfirmDialog.show(
+                      context: context,
+                      title: 'Подтвердить получение',
+                      message:
+                          'Вы подтверждаете получение заказа? Заказ будет перемещен в историю.',
+                      confirmText: 'Подтвердить',
+                      confirmColor: KColors.primary,
+                      icon: Icons.check_circle,
+                      onConfirm: () {
+                        _confirmOrderReceived();
+                      },
+                    );
+                  },
+                  icon: (!_isTechnician && isReceivingOrder)
                       ? SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       : Icon(Icons.check_circle, size: 24),
                   label: Text(
-                    isReceivingOrder ? 'Обрабатываем...' : 'Подтвердить получение заказа',
+                    (!_isTechnician && isReceivingOrder)
+                        ? 'Обрабатываем...'
+                        : 'Подтвердить получение заказа',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -227,34 +236,85 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
   }
 
   void _toggleCargoBay() async {
+    print(
+        '🔄 Начало открытия/закрытия отсека. Текущее состояние: isDroneOpen=$isDroneOpen');
+
     // Сохраняем предыдущее состояние для возможного отката
     final previousState = isDroneOpen;
-    
+
     // Оптимистичное обновление: сразу меняем состояние и кнопку
     setState(() {
       isDroneOpen = !isDroneOpen;
-      isOpeningDrone = false; // Сразу делаем кнопку активной, не ждем ответа сервера
+      isOpeningDrone =
+          false; // Сразу делаем кнопку активной, не ждем ответа сервера
     });
-    
+    print('✅ Состояние обновлено оптимистично. isDroneOpen=$isDroneOpen');
+
     try {
-      // Имитация открытия/закрытия отсека
-      await Future.delayed(Duration(seconds: 1));
-      
-      // Состояние уже обновлено оптимистично, ничего не делаем
+      // Вызываем API для открытия/закрытия отсека
+      final response = await FlightApi.openDroneBox(
+          !previousState); // Используем предыдущее состояние для запроса
+
+      // Выводим ответ сервера в консоль
+      print('📥 Ответ сервера при управлении грузовым отсеком:');
+      print('   Status Code: ${response.statusCode}');
+      print('   Response Body: ${response.body}');
+      print('   Response Headers: ${response.headers}');
+
+      // Принимаем успешным любой статус от 200 до 299
+      // Также обрабатываем случаи, когда сервер может вернуть другой статус, но операция выполнена
+      final responseBody = response.body.toLowerCase();
+      final isSuccessResponse =
+          response.statusCode >= 200 && response.statusCode < 300;
+      final hasSuccessKeyword = responseBody.contains('успех') ||
+          responseBody.contains('success') ||
+          responseBody.contains('ok') ||
+          responseBody.isEmpty; // Пустой ответ тоже может быть успешным
+
+      if (isSuccessResponse || hasSuccessKeyword) {
+        if (hasSuccessKeyword) {
+          print('✅ Сервер вернул успешный ответ: ${response.body}');
+        }
+
+        print('✅ Успешно! Состояние подтверждено: isDroneOpen=$isDroneOpen');
+        // Состояние уже обновлено оптимистично, ничего не делаем
+      } else {
+        print(
+            '❌ Ошибка при управлении отсеком: ${response.statusCode} - ${response.body}');
+        // Откатываем состояние при ошибке
+        if (mounted) {
+          setState(() {
+            isDroneOpen = previousState; // Возвращаем предыдущее состояние
+            isOpeningDrone = false;
+          });
+          print('⚠️ Состояние откачено. isDroneOpen=$isDroneOpen');
+        }
+        Get.snackbar(
+          'Ошибка',
+          'Не удалось ${previousState ? 'закрыть' : 'открыть'} отсек. Код: ${response.statusCode}',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: Duration(seconds: 3),
+        );
+      }
     } catch (e) {
-      print('❌ Ошибка при управлении отсеком: $e');
-      // Откатываем состояние при ошибке
+      print('❌ Исключение при управлении отсеком: $e');
+      print('   Stack trace: ${StackTrace.current}');
+      // Откатываем состояние при исключении
       if (mounted) {
         setState(() {
           isDroneOpen = previousState; // Возвращаем предыдущее состояние
           isOpeningDrone = false;
         });
+        print(
+            '⚠️ Состояние откачено из-за исключения. isDroneOpen=$isDroneOpen');
       }
       Get.snackbar(
         'Ошибка',
-        'Не удалось управлять грузовым отсеком',
+        'Ошибка сети: ${e.toString()}',
         backgroundColor: Colors.red,
         colorText: Colors.white,
+        duration: Duration(seconds: 3),
       );
     }
   }
@@ -264,33 +324,43 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
       return;
     }
 
-    setState(() {
-      isReceivingOrder = true;
-    });
+    if (!_isTechnician) {
+      setState(() {
+        isReceivingOrder = true;
+      });
+    }
 
     try {
       // Обновляем статус заказа на "delivered" чтобы он попал в историю
-      await _orderRepository.updateOrderStatus(
-        _orderData!.id.toString(),
-        'delivered',
-      );
+      if (_isTechnician) {
+        _orderRepository
+            .updateOrderStatus(
+          _orderData!.id.toString(),
+          'delivered',
+        )
+            .catchError((error) {
+          print('❌ Ошибка при подтверждении получения заказа: $error');
+          return false;
+        });
+      } else {
+        await _orderRepository.updateOrderStatus(
+          _orderData!.id.toString(),
+          'delivered',
+        );
 
-      // Имитация задержки обработки
-      await Future.delayed(Duration(milliseconds: 500));
-      
-      // Проверяем роль пользователя для правильной навигации
-      final box = GetStorage();
-      final role = box.read('role') ?? 'buyer';
-      
+        // Имитация задержки обработки
+        await Future.delayed(Duration(milliseconds: 500));
+      }
+
       // Возвращаемся на главный экран в зависимости от роли
-      if (role == 'technician' || role == 'tech') {
+      if (_isTechnician) {
         // Для техника возвращаемся на экран техника
         Get.offAllNamed(AppRoutes.techHome);
       } else {
         // Для покупателя возвращаемся на домашний экран
         Get.offAllNamed(AppRoutes.home);
       }
-      
+
       // Показываем сообщение об успехе
       Get.snackbar(
         'Успешно',
@@ -309,7 +379,7 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
         duration: Duration(seconds: 4),
       );
     } finally {
-      if (mounted) {
+      if (!_isTechnician && mounted) {
         setState(() {
           isReceivingOrder = false;
         });
@@ -317,4 +387,3 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
     }
   }
 }
-

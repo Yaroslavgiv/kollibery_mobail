@@ -113,22 +113,7 @@ class _TechDeliveryCompletedScreenState
                       child: SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: isOpeningDrone
-                              ? null
-                              : () {
-                                  SwipeConfirmDialog.show(
-                                    context: context,
-                                    title: isDroneOpen ? 'Закрыть грузовой отсек' : 'Открыть грузовой отсек',
-                                    message: 'Вы уверены, что хотите ${isDroneOpen ? 'закрыть' : 'открыть'} грузовой отсек дрона?',
-                                    confirmText: isDroneOpen ? 'Закрыть' : 'Открыть',
-                                    confirmColor: isDroneOpen ? Colors.orange.shade600 : Colors.green.shade600,
-                                    icon: isDroneOpen ? Icons.lock : Icons.lock_open,
-                                    onConfirm: () {
-                                      // Вызываем метод напрямую без async, так как он сам async
-                                      _toggleCargoBay();
-                                    },
-                                  );
-                                },
+                          onPressed: _toggleCargoBay,
                           icon: isOpeningDrone
                               ? SizedBox(
                                   width: 24,

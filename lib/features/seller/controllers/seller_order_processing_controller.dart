@@ -1,8 +1,10 @@
 import "package:get/get.dart";
 import "dart:async";
 import "package:flutter/material.dart";
+import "package:http/http.dart" as http;
 import "../../../data/models/order_model.dart";
 import "../../../data/repositories/order_repository.dart";
+import "../../../data/sources/api/flight_api.dart";
 
 class SellerOrderProcessingController extends GetxController {
   // Репозиторий для работы с заказами (может использоваться в будущем)
@@ -148,11 +150,17 @@ class SellerOrderProcessingController extends GetxController {
   }
 
   void _openCargoBay() {
-    // Грузовой отсек открыт
+    FlightApi.openDroneBox(true).catchError((e) {
+      print('❌ Ошибка при открытии отсека: $e');
+      return http.Response('', 500);
+    });
   }
 
   void _closeCargoBay() {
-    // Грузовой отсек закрыт
+    FlightApi.openDroneBox(false).catchError((e) {
+      print('❌ Ошибка при закрытии отсека: $e');
+      return http.Response('', 500);
+    });
   }
 
   void _sendDroneBack() async {
