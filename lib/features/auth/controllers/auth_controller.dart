@@ -99,10 +99,10 @@ class AuthController extends GetxController {
       // Сохраняем userId, если он есть в ответе
       if (userData['userId'] != null) {
         print('✅ userId найден в ответе: ${userData['userId']}');
-        box.write('userId', userData['userId']);
+        _saveUserIdIfGuid(userData['userId']);
       } else if (userData['id'] != null) {
         print('✅ id найден в ответе: ${userData['id']}');
-        box.write('userId', userData['id']);
+        _saveUserIdIfGuid(userData['id']);
       } else {
         print('⚠️ userId и id не найдены в ответе сервера');
         print('   - Проверяем другие возможные ключи...');
@@ -126,7 +126,7 @@ class AuthController extends GetxController {
         }
         final userIdFromToken = _extractUserIdFromToken(token);
         if (userIdFromToken != null) {
-          box.write('userId', userIdFromToken);
+          _saveUserIdIfGuid(userIdFromToken);
         }
       }
 
@@ -146,6 +146,14 @@ class AuthController extends GetxController {
         'deliveryPoint': userData['deliveryPoint']?.toString().trim() ?? existingProfile['deliveryPoint']?.toString().trim() ?? '',
         'profileImage': userData['profileImage']?.toString().trim() ?? existingProfile['profileImage']?.toString().trim() ?? '',
       });
+
+      // Дополнительно подтягиваем имя из /account/user (или /account/username)
+      try {
+        await _resolveProfileFromServer(email);
+      } catch (e) {
+        // Не прерываем автологин, если эндпоинт недоступен
+        print('Не удалось получить имя с сервера: $e');
+      }
       
       // Убеждаемся, что данные профиля сохранены
       print('✅ Данные профиля сохранены после автологина:');
@@ -199,10 +207,10 @@ class AuthController extends GetxController {
       // Сохраняем userId, если он есть в ответе
       if (userData['userId'] != null) {
         print('✅ userId найден в ответе: ${userData['userId']}');
-        box.write('userId', userData['userId']);
+        _saveUserIdIfGuid(userData['userId']);
       } else if (userData['id'] != null) {
         print('✅ id найден в ответе: ${userData['id']}');
-        box.write('userId', userData['id']);
+        _saveUserIdIfGuid(userData['id']);
       } else {
         print('⚠️ userId и id не найдены в ответе сервера');
         print('   - Проверяем другие возможные ключи...');
@@ -226,7 +234,7 @@ class AuthController extends GetxController {
         }
         final userIdFromToken = _extractUserIdFromToken(token);
         if (userIdFromToken != null) {
-          box.write('userId', userIdFromToken);
+          _saveUserIdIfGuid(userIdFromToken);
         }
       } else {
         box.remove('role');
@@ -243,6 +251,14 @@ class AuthController extends GetxController {
         'deliveryPoint': userData['deliveryPoint']?.toString().trim() ?? existingProfile['deliveryPoint']?.toString().trim() ?? '',
         'profileImage': userData['profileImage']?.toString().trim() ?? existingProfile['profileImage']?.toString().trim() ?? '',
       });
+
+      // Дополнительно подтягиваем имя из /account/user (или /account/username)
+      try {
+        await _resolveProfileFromServer(email);
+      } catch (e) {
+        // Не прерываем логин, если эндпоинт недоступен
+        print('Не удалось получить имя с сервера: $e');
+      }
       
       // Отладочная информация для проверки сохранения
       print('✅ Данные профиля сохранены после логина:');
@@ -364,6 +380,112 @@ class AuthController extends GetxController {
   /// Получить email пользователя
   String? getEmail() {
     return box.read('email');
+  }
+
+  bool _isGuid(String value) {
+    final guidRegex = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+    return guidRegex.hasMatch(value);
+  }
+
+  void _saveUserIdIfGuid(dynamic value) {
+    final text = value?.toString() ?? '';
+    if (text.isEmpty) {
+      return;
+    }
+    if (_isGuid(text)) {
+      box.write('userId', text);
+    } else {
+      print('⚠️ userId не GUID ($text), очищаем неверное значение');
+      box.remove('userId');
+    }
+  }
+
+  Future<void> _resolveProfileFromServer(String email) async {
+    final userId = box.read<String>('userId');
+    if (userId != null && userId.isNotEmpty && _isGuid(userId)) {
+      final accountUser = await _authRepository.getAccountUser(userId);
+      if (accountUser.isNotEmpty) {
+        _mergeProfileNameFromAccountUser(accountUser, email);
+        _saveUserIdIfGuid(accountUser['userId'] ?? accountUser['id']);
+      }
+      return;
+    }
+
+    final value = userId ?? '';
+    print('⚠️ userId отсутствует или не GUID ($value), вызываем /account/username');
+    final accountUser =
+        await _authRepository.getAccountUserByUsername(email);
+    if (accountUser.isNotEmpty) {
+      _mergeProfileNameFromAccountUser(accountUser, email);
+      _saveUserIdIfGuid(accountUser['userId'] ?? accountUser['id']);
+
+      final resolvedId = box.read<String>('userId');
+      if (resolvedId != null && resolvedId.isNotEmpty && _isGuid(resolvedId)) {
+        final fullUser = await _authRepository.getAccountUser(resolvedId);
+        if (fullUser.isNotEmpty) {
+          _mergeProfileNameFromAccountUser(fullUser, email);
+          _saveUserIdIfGuid(fullUser['userId'] ?? fullUser['id']);
+        }
+      } else {
+        print('⚠️ userId не получен после /account/username');
+      }
+    }
+  }
+
+  void _mergeProfileNameFromAccountUser(
+      Map<String, dynamic> data, String fallbackEmail) {
+    final existingProfile = box.read<Map<String, dynamic>>('userProfile') ?? {};
+    final rawName = _extractFullName(data);
+    final rawFirstName = _extractString(data, ['firstName', 'givenName']);
+    final rawLastName = _extractString(
+        data, ['lastName', 'surname', 'surName', 'familyName']);
+
+    String firstName = existingProfile['firstName']?.toString().trim() ?? '';
+    String lastName = existingProfile['lastName']?.toString().trim() ?? '';
+
+    if ((rawFirstName != null && rawFirstName.isNotEmpty) ||
+        (rawLastName != null && rawLastName.isNotEmpty)) {
+      if (rawFirstName != null && rawFirstName.isNotEmpty) {
+        firstName = rawFirstName;
+      }
+      if (rawLastName != null && rawLastName.isNotEmpty) {
+        lastName = rawLastName;
+      }
+    } else if (rawName != null && rawName.isNotEmpty) {
+      final parts = rawName.split(RegExp(r'\s+'));
+      if (parts.isNotEmpty) {
+        firstName = parts.first;
+        lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+      }
+    }
+
+    box.write('userProfile', {
+      'firstName': firstName,
+      'lastName': lastName,
+      'email': existingProfile['email']?.toString().trim() ?? fallbackEmail,
+      'phone': existingProfile['phone']?.toString().trim() ?? '',
+      'deliveryPoint': existingProfile['deliveryPoint']?.toString().trim() ?? '',
+      'profileImage': existingProfile['profileImage']?.toString().trim() ?? '',
+    });
+  }
+
+  String? _extractFullName(Map<String, dynamic> data) {
+    return _extractString(
+        data, ['fullName', 'name', 'fio', 'displayName', 'userName']);
+  }
+
+  String? _extractString(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key];
+      if (value != null) {
+        final text = value.toString().trim();
+        if (text.isNotEmpty) {
+          return text;
+        }
+      }
+    }
+    return null;
   }
 
   /// Сброс пароля — если ваше API это поддерживает

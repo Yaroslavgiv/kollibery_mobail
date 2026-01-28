@@ -183,52 +183,13 @@ class _MainScreenState extends State<MainScreen> {
                             ),
                           ],
                         ),
-                        SizedBox(height: ScreenUtil.adaptiveHeight(5)),
-                        Row(
-                          children: [
-                            Icon(Icons.location_on,
-                                color: KColors.textPrimary, size: 16),
-                            SizedBox(width: ScreenUtil.adaptiveWidth(5)),
-                            Flexible(
-                              child: Text(
-                                profileController.deliveryPoint.value,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(color: KColors.textPrimary),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        )
+                        // Убрали отображение геоданных (точки доставки)
                       ],
                     ),
                   ),
                 ),
               );
             }),
-            ListTile(
-              leading: Icon(Icons.dashboard, color: KColors.primary),
-              title: Text(
-                Strings.dashboard,
-                style: KTextTheme.lightTextTheme.titleMedium,
-              ),
-              onTap: () {
-                // Navigate to dashboard
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.settings, color: KColors.primary),
-              title: Text(
-                Strings.settings,
-                style: KTextTheme.lightTextTheme.titleMedium,
-              ),
-              onTap: () {
-                // Navigate to settings
-                Navigator.pop(context);
-              },
-            ),
           ],
         ),
       ),

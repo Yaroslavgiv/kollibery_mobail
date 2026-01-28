@@ -13,7 +13,8 @@ class ProfileController extends GetxController {
   final RxString deliveryPoint = ''.obs; // Точка доставки
 
   final GetStorage storage = GetStorage(); // Локальное хранилище
-  final AuthRepository _authRepository = AuthRepository(); // Репозиторий для работы с API
+  final AuthRepository _authRepository =
+      AuthRepository(); // Репозиторий для работы с API
   final RxBool isLoading = false.obs; // Флаг загрузки
 
   @override
@@ -28,11 +29,11 @@ class ProfileController extends GetxController {
       // Получаем текущую роль для отладки
       final currentRole = storage.read<String>('role') ?? 'unknown';
       final currentEmail = storage.read<String>('email') ?? 'unknown';
-      
+
       print('📥 Загрузка данных профиля:');
       print('   - Текущая роль: $currentRole');
       print('   - Текущий email: $currentEmail');
-      
+
       // Сначала загружаем данные из локального хранилища для быстрого отображения
       final storedData = storage.read<Map<String, dynamic>>('userProfile');
       if (storedData != null && storedData.isNotEmpty) {
@@ -40,19 +41,24 @@ class ProfileController extends GetxController {
         lastName.value = storedData['lastName']?.toString().trim() ?? '';
         email.value = storedData['email']?.toString().trim() ?? '';
         phone.value = storedData['phone']?.toString().trim() ?? '';
-        deliveryPoint.value = storedData['deliveryPoint']?.toString().trim() ?? '';
-        profileImage.value = storedData['profileImage']?.toString().trim() ?? '';
-        
+        deliveryPoint.value =
+            storedData['deliveryPoint']?.toString().trim() ?? '';
+        profileImage.value =
+            storedData['profileImage']?.toString().trim() ?? '';
+
         // Отладочная информация
         print('✅ Данные профиля загружены из локального хранилища:');
         print('   - firstName: ${firstName.value}');
         print('   - lastName: ${lastName.value}');
         print('   - email: ${email.value}');
         print('   - phone: ${phone.value}');
-        
+
         // Проверяем, что email совпадает с текущим пользователем
-        if (email.value.isNotEmpty && currentEmail != 'unknown' && email.value != currentEmail) {
-          print('⚠️ ВНИМАНИЕ: Email профиля не совпадает с текущим пользователем!');
+        if (email.value.isNotEmpty &&
+            currentEmail != 'unknown' &&
+            email.value != currentEmail) {
+          print(
+              '⚠️ ВНИМАНИЕ: Email профиля не совпадает с текущим пользователем!');
           print('   - Email профиля: ${email.value}');
           print('   - Email текущего пользователя: $currentEmail');
         }
@@ -62,20 +68,54 @@ class ProfileController extends GetxController {
         if (authEmail != null && authEmail.isNotEmpty) {
           email.value = authEmail;
         }
-        
+
         print('⚠️ Данные профиля не найдены в локальном хранилище');
       }
 
       // Пытаемся загрузить актуальные данные с сервера
+      isLoading.value = true;
       try {
-        isLoading.value = true;
         final apiResponse = await _authRepository.getProfile();
         if (apiResponse.isNotEmpty) {
           updateProfileFromApi(apiResponse);
         }
       } catch (e) {
-        // Если не удалось загрузить с сервера, используем локальные данные
         print('Не удалось загрузить профиль с сервера: $e');
+      }
+
+      try {
+        final userId = storage.read<String>('userId');
+        if (userId == null || userId.isEmpty) {
+          print('⚠️ userId отсутствует, /account/user не вызван');
+          final email = storage.read<String>('email');
+          if (email != null && email.isNotEmpty) {
+            final userResponse =
+                await _authRepository.getAccountUserByUsername(email);
+            if (userResponse.isNotEmpty) {
+              updateNameFromAccountUser(userResponse);
+              _saveUserIdFromData(userResponse);
+            }
+          }
+        } else if (!_isGuid(userId)) {
+          print('⚠️ userId не GUID ($userId), /account/user не вызван');
+          final email = storage.read<String>('email');
+          if (email != null && email.isNotEmpty) {
+            final userResponse =
+                await _authRepository.getAccountUserByUsername(email);
+            if (userResponse.isNotEmpty) {
+              updateNameFromAccountUser(userResponse);
+              _saveUserIdFromData(userResponse);
+            }
+          }
+        } else {
+          final userResponse = await _authRepository.getAccountUser(userId);
+          if (userResponse.isNotEmpty) {
+            updateNameFromAccountUser(userResponse);
+            _saveUserIdFromData(userResponse);
+          }
+        }
+      } catch (e) {
+        print('Не удалось загрузить пользователя с сервера: $e');
       } finally {
         isLoading.value = false;
       }
@@ -107,14 +147,91 @@ class ProfileController extends GetxController {
     lastName.value = data['lastName']?.toString().trim() ?? lastName.value;
     email.value = data['email']?.toString().trim() ?? email.value;
     phone.value = data['phone']?.toString().trim() ?? phone.value;
-    deliveryPoint.value = data['deliveryPoint']?.toString().trim() ?? deliveryPoint.value;
-    profileImage.value = data['profileImage']?.toString().trim() ?? profileImage.value;
+    deliveryPoint.value =
+        data['deliveryPoint']?.toString().trim() ?? deliveryPoint.value;
+    profileImage.value =
+        data['profileImage']?.toString().trim() ?? profileImage.value;
     saveProfileData(); // Сохраняем данные локально
-    
+
     print('✅ Данные профиля обновлены из API:');
     print('   - firstName: ${firstName.value}');
     print('   - lastName: ${lastName.value}');
     print('   - email: ${email.value}');
+  }
+
+  /// Обновление имени из /account/user
+  void updateNameFromAccountUser(Map<String, dynamic> data) {
+    print('🔎 /account/user keys: ${data.keys.toList()}');
+    print('🔎 /account/user payload: $data');
+    final rawName = _extractFullName(data);
+    final rawFirstName = _extractString(data, ['firstName', 'givenName']);
+    final rawLastName =
+        _extractString(data, ['lastName', 'surname', 'surName', 'familyName']);
+
+    if ((rawName == null || rawName.isEmpty) &&
+        (rawFirstName == null || rawFirstName.isEmpty) &&
+        (rawLastName == null || rawLastName.isEmpty)) {
+      print('⚠️ /account/user не содержит имени. Обновление пропущено.');
+      return;
+    }
+
+    if ((rawFirstName != null && rawFirstName.isNotEmpty) ||
+        (rawLastName != null && rawLastName.isNotEmpty)) {
+      if (rawFirstName != null && rawFirstName.isNotEmpty) {
+        firstName.value = rawFirstName;
+      }
+      if (rawLastName != null && rawLastName.isNotEmpty) {
+        lastName.value = rawLastName;
+      }
+    } else if (rawName != null && rawName.isNotEmpty) {
+      final parts = rawName.split(RegExp(r'\s+'));
+      if (parts.isNotEmpty) {
+        firstName.value = parts.first;
+        lastName.value = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+      }
+    }
+
+    saveProfileData();
+
+    print('✅ Имя обновлено из /account/user:');
+    print('   - firstName: ${firstName.value}');
+    print('   - lastName: ${lastName.value}');
+  }
+
+  String? _extractFullName(Map<String, dynamic> data) {
+    return _extractString(
+        data, ['fullName', 'name', 'fio', 'displayName', 'userName']);
+  }
+
+  String? _extractString(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key];
+      if (value != null) {
+        final text = value.toString().trim();
+        if (text.isNotEmpty) {
+          return text;
+        }
+      }
+    }
+    return null;
+  }
+
+  bool _isGuid(String value) {
+    final guidRegex = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+    return guidRegex.hasMatch(value);
+  }
+
+  void _saveUserIdFromData(Map<String, dynamic> data) {
+    final rawId = data['userId']?.toString() ?? data['id']?.toString() ?? '';
+    if (rawId.isEmpty) {
+      return;
+    }
+    if (_isGuid(rawId)) {
+      storage.write('userId', rawId);
+    } else {
+      print('⚠️ userId из ответа не GUID ($rawId), не сохраняем');
+    }
   }
 
   /// Сохранение данных профиля в локальное хранилище
@@ -151,17 +268,17 @@ class ProfileController extends GetxController {
     this.lastName.value = lastName;
     this.email.value = email;
     this.phone.value = phone;
-    
+
     // СРАЗУ сохраняем в локальное хранилище
     saveProfileData();
-    
+
     // Обновляем email в хранилище авторизации, если он изменился
     final currentAuthEmail = storage.read<String>('email');
     if (currentAuthEmail != null && currentAuthEmail != email) {
       storage.write('email', email);
       print('✅ Email в хранилище авторизации обновлен: $email');
     }
-    
+
     print('✅ Данные профиля обновлены локально и отображаются в UI');
     print('   - firstName: $firstName');
     print('   - lastName: $lastName');
@@ -174,7 +291,7 @@ class ProfileController extends GetxController {
       // Получаем текущую роль и токен для отладки
       final currentRole = storage.read<String>('role') ?? 'unknown';
       final token = storage.read<String>('token');
-      
+
       print('📤 Отправка данных на сервер:');
       print('   - Роль: $currentRole');
       print('   - Токен: ${token != null ? "есть" : "отсутствует"}');
@@ -211,16 +328,16 @@ class ProfileController extends GetxController {
         if (response['phone'] != null) {
           this.phone.value = response['phone'].toString().trim();
         }
-        
+
         // Сохраняем обновленные данные из сервера
         saveProfileData();
-        
+
         print('✅ Данные синхронизированы с сервером');
       }
     } catch (e) {
       print('❌ Ошибка при отправке на сервер: $e');
       print('✅ Данные остаются сохраненными локально и отображаются в UI');
-      
+
       // НЕ пробрасываем ошибку, так как данные уже сохранены локально
       // Пользователь видит обновленные данные, даже если сервер недоступен
     } finally {

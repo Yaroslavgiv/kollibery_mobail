@@ -82,6 +82,11 @@ class AuthRepository {
         throw Exception('Ошибка логина. Код: ${response.statusCode}');
       }
 
+      // Отладочная информация по ответу сервера
+      print('📥 API /account/login:');
+      print('   - statusCode: ${response.statusCode}');
+      print('   - data: ${response.data}');
+
       return response.data;
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout ||
@@ -151,6 +156,7 @@ class AuthRepository {
       // Основной вариант - PUT /account/profile (стандартный REST)
       final endpointsToTry = <String>[
         '/account/profile',        // Вариант 1: стандартный REST (PUT /account/profile) - основной
+        '/account/user',           // Вариант 2: если сервер использует /account/user
       ];
       
       // Если есть userId, добавляем варианты с userId
@@ -303,6 +309,152 @@ class AuthRepository {
         throw Exception('Профиль не найден.');
       } else {
         throw Exception('Ошибка при получении профиля: ${e.message}');
+      }
+    }
+  }
+
+  /// Получение данных пользователя
+  /// GET /account/user?userId=...
+  Future<Map<String, dynamic>> getAccountUser(String userId) async {
+    try {
+      final box = GetStorage();
+      final token = box.read<String>('token');
+
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await _dio.get(
+        '/account/user',
+        queryParameters: {
+          'userId': userId,
+        },
+        options: Options(headers: headers),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception(
+            'Ошибка получения пользователя. Код: ${response.statusCode}');
+      }
+
+      // Отладочная информация по ответу сервера
+      print('📥 API /account/user:');
+      print('   - statusCode: ${response.statusCode}');
+      print('   - data: ${response.data}');
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        if (data['error'] != null || data['message'] != null) {
+          final errorText =
+              data['error']?.toString() ?? data['message']?.toString();
+          throw Exception(
+              'Ошибка /account/user: ${errorText ?? 'неизвестная'}');
+        }
+        final nestedKeys = ['user', 'data', 'result', 'payload', 'profile'];
+        for (final key in nestedKeys) {
+          final nested = data[key];
+          if (nested is Map<String, dynamic>) {
+            return nested;
+          }
+        }
+        return data;
+      }
+
+      return {};
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        throw Exception(
+            'Превышено время ожидания. Проверьте подключение к интернету.');
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+            'Ошибка подключения к серверу. Проверьте интернет-соединение.');
+      } else if (e.response?.statusCode == 401) {
+        throw Exception('Требуется авторизация для получения пользователя.');
+      } else if (e.response?.statusCode == 404) {
+        throw Exception('Эндпоинт /account/user не найден.');
+      } else {
+        throw Exception('Ошибка при получении пользователя: ${e.message}');
+      }
+    }
+  }
+
+  /// Получение данных пользователя по имени (username/email)
+  /// POST /account/username
+  Future<Map<String, dynamic>> getAccountUserByUsername(String userName) async {
+    try {
+      final box = GetStorage();
+      final token = box.read<String>('token');
+
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await _dio.post(
+        '/account/username',
+        queryParameters: {
+          'userName': userName,
+        },
+        options: Options(headers: headers),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception(
+            'Ошибка получения пользователя по username. Код: ${response.statusCode}');
+      }
+
+      // Отладочная информация по ответу сервера
+      print('📥 API /account/username:');
+      print('   - statusCode: ${response.statusCode}');
+      print('   - data: ${response.data}');
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        if (data['error'] != null || data['message'] != null) {
+          final errorText =
+              data['error']?.toString() ?? data['message']?.toString();
+          throw Exception(
+              'Ошибка /account/username: ${errorText ?? 'неизвестная'}');
+        }
+        final nestedKeys = ['user', 'data', 'result', 'payload', 'profile'];
+        for (final key in nestedKeys) {
+          final nested = data[key];
+          if (nested is Map<String, dynamic>) {
+            return nested;
+          }
+        }
+        return data;
+      }
+
+      return {};
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        throw Exception(
+            'Превышено время ожидания. Проверьте подключение к интернету.');
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+            'Ошибка подключения к серверу. Проверьте интернет-соединение.');
+      } else if (e.response?.statusCode == 401) {
+        throw Exception(
+            'Требуется авторизация для получения пользователя по username.');
+      } else if (e.response?.statusCode == 404) {
+        throw Exception('Эндпоинт /account/username не найден.');
+      } else {
+        throw Exception(
+            'Ошибка при получении пользователя по username: ${e.message}');
       }
     }
   }

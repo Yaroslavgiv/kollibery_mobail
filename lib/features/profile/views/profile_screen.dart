@@ -145,26 +145,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
 
-              // Точка доставки/отправки (в зависимости от роли)
-              ListTile(
-                leading: Icon(Icons.location_on, color: KColors.primary),
-                title: Text(
-                  profileController.deliveryPoint.value.isEmpty
-                      ? (_currentRole == 'seller' 
-                          ? 'Точка отправки не установлена'
-                          : 'Точка доставки не установлена')
-                      : profileController.deliveryPoint.value,
-                  style:
-                      KTextTheme.lightTextTheme.headlineSmall, // Адрес доставки/отправки
-                ),
-                trailing: IconButton(
-                  icon: Icon(Icons.edit, color: KColors.primary),
-                  onPressed: () => Get.toNamed(
-                    '/delivery-point',
-                    arguments: {'role': _currentRole},
-                  ),
-                ),
-              ),
+              // Блок точки доставки/отправки скрыт по требованию
 
               // Кнопка редактирования профиля
               SizedBox(height: ScreenUtil.adaptiveHeight(20)),

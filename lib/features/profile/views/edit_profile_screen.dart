@@ -19,7 +19,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
 
   @override
@@ -36,7 +35,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       firstNameController.text = profileController.firstName.value;
       lastNameController.text = profileController.lastName.value;
-      emailController.text = profileController.email.value;
       phoneController.text = profileController.phone.value;
     });
   }
@@ -101,26 +99,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               SizedBox(height: ScreenUtil.adaptiveHeight(20)),
 
-              // Поле "Почта"
-              Text(
-                'Почта',
-                style: KTextTheme.lightTextTheme.headlineSmall,
-              ),
-              SizedBox(height: ScreenUtil.adaptiveHeight(5)),
-              TextField(
-                controller: emailController,
-                style: TAppTheme.lightTheme.textTheme.labelLarge,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
-                  filled: true,
-                  fillColor: TAppTheme.lightTheme.focusColor,
-                ),
-              ),
-              SizedBox(height: ScreenUtil.adaptiveHeight(20)),
-
               // Поле "Телефон"
               Text(
                 'Телефон',
@@ -154,15 +132,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           if (lastNameController.text.trim().isEmpty) {
                             return;
                           }
-                          if (emailController.text.trim().isEmpty) {
-                            return;
-                          }
-
                           // Обновляем данные профиля (данные сразу сохраняются локально)
                           await profileController.updateProfile(
                             firstName: firstNameController.text.trim(),
                             lastName: lastNameController.text.trim(),
-                            email: emailController.text.trim(),
+                            email: profileController.email.value,
                             phone: phoneController.text.trim(),
                           );
 

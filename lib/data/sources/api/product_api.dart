@@ -110,6 +110,12 @@ class ProductApi {
     return null;
   }
 
+  static bool _isGuid(String value) {
+    final guidRegex = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+    return guidRegex.hasMatch(value);
+  }
+
   /// Добавление товара через /order/creatproduct
   static Future<bool> addProduct({
     required String name,
@@ -179,26 +185,29 @@ class ProductApi {
               if (payloadMap['userId'] != null) {
                 userId = payloadMap['userId'].toString();
                 print('✅ userId получен из токена: $userId');
-                // Сохраняем для будущего использования
-                _storage.write('userId', userId);
+                if (_isGuid(userId)) {
+                  _storage.write('userId', userId);
+                }
               } else if (payloadMap['sub'] != null) {
                 userId = payloadMap['sub'].toString();
                 print('✅ userId получен из токена (sub): $userId');
-                _storage.write('userId', userId);
+                if (_isGuid(userId)) {
+                  _storage.write('userId', userId);
+                }
               } else if (payloadMap['id'] != null) {
                 userId = payloadMap['id'].toString();
                 print('✅ userId получен из токена (id): $userId');
-                _storage.write('userId', userId);
+                if (_isGuid(userId)) {
+                  _storage.write('userId', userId);
+                }
               } else if (payloadMap['nameid'] != null) {
-                // Используем nameid (email) как идентификатор
+                // Используем nameid (email) только локально
                 userId = payloadMap['nameid'].toString();
                 print('✅ Используем nameid (email) из токена как userId: $userId');
-                _storage.write('userId', userId);
               } else if (payloadMap['unique_name'] != null) {
-                // Используем unique_name (email) как идентификатор
+                // Используем unique_name (email) только локально
                 userId = payloadMap['unique_name'].toString();
                 print('✅ Используем unique_name (email) из токена как userId: $userId');
-                _storage.write('userId', userId);
               } else {
                 print('⚠️ userId, sub, id, nameid и unique_name не найдены в payload токена');
               }
@@ -220,10 +229,9 @@ class ProductApi {
           if (email != null) {
             userId = email;
             print('✅ Используем email как userId: $userId');
-            // Сохраняем email как userId для будущего использования
-            _storage.write('userId', userId);
           } else {
-            throw Exception('Не удалось определить пользователя. Пожалуйста, перезайдите в систему.');
+            throw Exception(
+                'Не удалось определить пользователя. Пожалуйста, перезайдите в систему.');
           }
         }
       }
