@@ -103,13 +103,6 @@ class ProductCardScreen extends StatelessWidget {
                             try {
                               cartController.addToCart(product.toJson());
                             } catch (e) {
-                              Get.snackbar(
-                                'Ошибка',
-                                'Не удалось добавить товар в корзину',
-                                backgroundColor: Colors.red,
-                                colorText: Colors.white,
-                                duration: Duration(seconds: 2),
-                              );
                             }
                           },
                           icon: Icon(Icons.add_shopping_cart),

@@ -18,6 +18,14 @@ void main() async {
   //   options: DefaultFirebaseOptions.currentPlatform,
   // );
   await GetStorage.init(); // Инициализация GetStorage
+  // Однократная очистка локальной истории заказов
+  final box = GetStorage();
+  final isHistoryCleared = box.read('local_history_cleared') == true;
+  if (!isHistoryCleared) {
+    await box.remove('seller_order_history');
+    await box.remove('local_orders');
+    await box.write('local_history_cleared', true);
+  }
 
   // ВАЖНО: инициализация AuthController как singleton
   Get.put(AuthController(), permanent: true);

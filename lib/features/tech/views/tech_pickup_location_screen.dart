@@ -100,12 +100,6 @@ class _TechPickupLocationScreenState extends State<TechPickupLocationScreen> {
 
   void _confirmPickupLocation() {
     if (_pickupMarker == null) {
-      Get.snackbar(
-        'Ошибка',
-        'Пожалуйста, выберите точку посадки дрона на карте',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
       return;
     }
 

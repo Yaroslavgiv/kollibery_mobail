@@ -15,7 +15,7 @@ class FlightApi {
   }) async {
     // Получаем токен из локального хранилища
     final token = box.read('token');
-    
+
     // Формируем заголовки с авторизацией
     final Map<String, String> headers = {
       'Content-Type': 'application/json',
@@ -23,14 +23,14 @@ class FlightApi {
     if (token != null) {
       headers['Authorization'] = 'Bearer $token';
     }
-    
+
     final Map<String, dynamic> body = {};
-    
+
     // Если переданы все точки маршрута (старт + промежуточные + финиш),
     // отправляем их в массиве waypoints (используем тот же формат, что и testAutopilotWithWaypoints)
     if (startPoint != null && buyerPoint != null) {
       final List<Map<String, double>> allPoints = [];
-      
+
       // Добавляем точку старта (используем Map<String, double> как в рабочем методе)
       final startLat = startPoint['latitude']?.toDouble() ?? 0.0;
       final startLon = startPoint['longitude']?.toDouble() ?? 0.0;
@@ -38,7 +38,7 @@ class FlightApi {
         'latitude': startLat,
         'longitude': startLon,
       });
-      
+
       // Добавляем промежуточные точки
       if (waypoints != null && waypoints.isNotEmpty) {
         for (var point in waypoints) {
@@ -50,7 +50,7 @@ class FlightApi {
           });
         }
       }
-      
+
       // Добавляем точку финиша
       final endLat = buyerPoint['latitude']?.toDouble() ?? 0.0;
       final endLon = buyerPoint['longitude']?.toDouble() ?? 0.0;
@@ -58,12 +58,12 @@ class FlightApi {
         'latitude': endLat,
         'longitude': endLon,
       });
-      
+
       // Проверяем, что массив не пустой
       if (allPoints.isEmpty) {
         throw Exception('Массив точек маршрута не может быть пустым');
       }
-      
+
       // Отправляем все точки в массиве (точно такой же формат, как в testAutopilotWithWaypoints)
       // Используем только waypoints, без дополнительных полей, чтобы формат совпадал с рабочим методом
       body['waypoints'] = allPoints;
@@ -82,12 +82,12 @@ class FlightApi {
         body['buyerPoint'] = buyerPoint;
       }
     }
-    
+
     // Валидация данных перед отправкой
     if (body.isEmpty) {
       throw Exception('Тело запроса не может быть пустым');
     }
-    
+
     if (body.containsKey('waypoints')) {
       final waypointsList = body['waypoints'] as List;
       if (waypointsList.isEmpty) {
@@ -99,7 +99,7 @@ class FlightApi {
         print('Точка $i: lat=${point['latitude']}, lng=${point['longitude']}');
       }
     }
-    
+
     final bodyJson = jsonEncode(body);
     final endpointUrl = '${API_BASE_URL}/test/testautopilot';
     print('=== Отправка точек маршрута в /test/testautopilot ===');
@@ -108,30 +108,30 @@ class FlightApi {
     print('Body: $bodyJson');
     print('Body length: ${bodyJson.length} bytes');
     print('Token present: ${token != null}');
-    
+
     try {
       final uri = Uri.parse(endpointUrl);
       print('Parsed URI: $uri');
-      
+
       final response = await http.post(
         uri,
         headers: headers,
         body: bodyJson,
       );
-      
+
       print('=== Ответ сервера ===');
       print('Status Code: ${response.statusCode}');
       print('Response Headers: ${response.headers}');
       print('Response Body: ${response.body}');
       print('Response Body length: ${response.body.length} bytes');
-      
+
       // Если получили ошибку, выводим дополнительную информацию
       if (response.statusCode < 200 || response.statusCode >= 300) {
         print('=== ОШИБКА ОТВЕТА ===');
         print('Возможно, данные не дошли до сервера или формат неверный');
         print('Проверьте логи на сервере');
       }
-      
+
       return response;
     } catch (e, stackTrace) {
       print('=== Ошибка при отправке запроса ===');
@@ -160,7 +160,7 @@ class FlightApi {
 
     final uri = Uri.parse('${API_BASE_URL}/flight/openbox');
     final body = jsonEncode(isActive);
-    
+
     print('=== ОТКРЫТИЕ/ЗАКРЫТИЕ БОКСА ДРОНА ===');
     print('POST $uri');
     print('Headers: $headers');
@@ -601,7 +601,6 @@ class FlightApi {
     print('Response Body: ${response.body}');
     return response;
   }
-
 
   // Посадка дрона
   static Future<http.Response> droneLand() async {

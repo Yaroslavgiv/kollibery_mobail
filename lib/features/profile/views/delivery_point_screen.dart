@@ -302,7 +302,6 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
     if (!serviceEnabled) {
       serviceEnabled = await _location.requestService();
       if (!serviceEnabled) {
-        Get.snackbar('Ошибка', 'Необходимо включить GPS');
         return;
       }
     }
@@ -313,7 +312,6 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
       permissionGranted = await _location.requestPermission();
       if (permissionGranted != PermissionStatus.granted &&
           permissionGranted != PermissionStatus.grantedLimited) {
-        Get.snackbar('Ошибка', 'Необходимо разрешение на геолокацию');
         return;
       }
     }
@@ -369,15 +367,7 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
 
       // Перемещаем карту к текущему местоположению
       _mapController.move(newLocation, 16.0);
-    } catch (e) {
-      Get.snackbar(
-        'Ошибка',
-        'Не удалось получить текущее местоположение',
-        duration: Duration(seconds: 2),
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    }
+    } catch (e) {}
   }
 
   /// Поиск местоположения по введенному адресу
@@ -446,13 +436,6 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
   /// Обработчик нажатия на кнопку "Заказать"
   Future<void> _onOrderButtonPressed() async {
     if (_selectedPoint == null || _selectedAddress == null) {
-      Get.snackbar(
-        'Ошибка',
-        'Сначала выберите точку доставки на карте',
-        duration: Duration(seconds: 2),
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
       return;
     }
 
@@ -479,45 +462,9 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
   /// Показывает окно подтверждения заказа
   /// Показывает окно подтверждения заказа с адресом
   void _showOrderConfirmationDialog(String address, LatLng point) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(
-            "Подтвердите заказ",
-            style: TextStyle(color: Colors.black),
-          ),
-          content: Text(
-              "Вы выбрали точку:\n$address\n\nВы хотите оформить заказ?",
-              style: TextStyle(color: Colors.black)),
-          actions: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context), // Закрыть окно
-                  child: Text(
-                    "Отмена",
-                    style: TextStyle(color: Colors.black),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Закрыть диалог
-                    // Определяем роль для заказа
-                    final orderRole = widget.role ?? 'buyer';
-                    _placeOrder(address, point, orderRole);
-                  },
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: KColors.buttonDark),
-                  child: Text("Заказать"),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
-    );
+    // Алерт-диалоги отключены по требованию
+    final orderRole = widget.role ?? 'buyer';
+    _placeOrder(address, point, orderRole);
   }
 
   /// Логика оформления заказа (здесь можно отправить данные на сервер)
@@ -565,13 +512,6 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
 
       if (!success) {
         print('❌ Заказ НЕ был размещен на сервере!');
-        Get.snackbar(
-          "Ошибка",
-          "Не удалось разместить заказ на сервере. Проверьте логи.",
-          duration: Duration(seconds: 5),
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
         return;
       }
 
@@ -589,13 +529,6 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
         print('Не удалось обновить список заказов: $e');
       }
     } catch (e) {
-      Get.snackbar(
-        "Ошибка",
-        "Ошибка при размещении заказа: $e",
-        duration: Duration(seconds: 3),
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
       return;
     }
 
@@ -617,20 +550,7 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
       updatedAt: DateTime.now(),
     );
 
-    // Сохраняем заказ локально, чтобы он сразу отображался в истории
-    try {
-      final localOrders = box.read<List<dynamic>>('local_orders') ?? [];
-      final orderJson = orderModel.toJson();
-      localOrders.add(orderJson);
-      // Оставляем только последние 50 заказов
-      if (localOrders.length > 50) {
-        localOrders.removeRange(0, localOrders.length - 50);
-      }
-      box.write('local_orders', localOrders);
-      print('✅ Заказ сохранен локально: ${orderModel.id}');
-    } catch (e) {
-      print('⚠️ Не удалось сохранить заказ локально: $e');
-    }
+    // Локальное сохранение истории отключено по требованию
 
     // Заказ оформлен
 

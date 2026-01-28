@@ -189,7 +189,6 @@ class SellerOrderProcessingController extends GetxController {
       // Временно используем заглушку, пока не будет реализован API
       print('Обновление статуса заказа $orderId на $status');
     } catch (e) {
-      Get.snackbar('Ошибка', 'Не удалось обновить статус: $e');
     }
   }
 

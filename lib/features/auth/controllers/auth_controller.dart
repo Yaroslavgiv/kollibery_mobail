@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -55,11 +56,6 @@ class AuthController extends GetxController {
       await _authRepository.register(
           firstName, lastName, email, password, confirmPassword, role);
 
-      // Сохраняем роль пользователя
-      box.write('role', role);
-      // Привязываем роль к email для последующих логинов
-      box.write('roleByEmail:$email', role);
-
       // Сохраняем данные профиля в локальное хранилище
       // Это гарантирует, что данные будут доступны даже если сервер не вернет их при автологине
       box.write('userProfile', {
@@ -78,9 +74,8 @@ class AuthController extends GetxController {
       print('   - email: $email');
 
       // Автоматически входим в систему после регистрации
-      await autoLoginAfterRegistration(email, password, role);
+      await autoLoginAfterRegistration(email, password);
     } catch (e) {
-      Get.snackbar('Ошибка', _getErrorMessage(e));
     } finally {
       isLoading.value = false;
     }
@@ -88,7 +83,7 @@ class AuthController extends GetxController {
 
   /// Автоматический вход после регистрации
   Future<void> autoLoginAfterRegistration(
-String email, String password, String role) async {
+      String email, String password) async {
     try {
       final userData = await _authRepository.login(email, password);
 
@@ -119,9 +114,20 @@ String email, String password, String role) async {
         }
       }
 
-      // Сохраняем токен, если он есть в ответе
-      if (userData['token'] != null) {
-        box.write('token', userData['token']);
+      // Сохраняем токен и роль только из токена
+      final token = userData['token']?.toString();
+      if (token != null && token.isNotEmpty) {
+        box.write('token', token);
+        final roleFromToken = _extractRoleFromToken(token);
+        if (roleFromToken != null) {
+          box.write('role', roleFromToken);
+        } else {
+          box.remove('role');
+        }
+        final userIdFromToken = _extractUserIdFromToken(token);
+        if (userIdFromToken != null) {
+          box.write('userId', userIdFromToken);
+        }
       }
 
       // Обновляем данные профиля, если сервер их возвращает
@@ -147,13 +153,16 @@ String email, String password, String role) async {
       print('   - lastName: ${box.read<Map<String, dynamic>>('userProfile')?['lastName']}');
       print('   - email: ${box.read<Map<String, dynamic>>('userProfile')?['email']}');
 
-      // Перенаправляем согласно роли
-      if (role == 'seller') {
+      // Перенаправляем согласно роли из токена
+      final roleFromToken = box.read('role');
+      if (roleFromToken == 'seller') {
         Get.offAllNamed(AppRoutes.sellerHome);
-      } else if (role == 'technician') {
+      } else if (roleFromToken == 'technician') {
         Get.offAllNamed(AppRoutes.techHome);
-      } else {
+      } else if (roleFromToken == 'buyer') {
         Get.offAllNamed(AppRoutes.home);
+      } else {
+        Get.offAllNamed(AppRoutes.login);
       }
     } catch (e) {
       // Если автоматический вход не удался, перенаправляем на экран входа
@@ -205,28 +214,22 @@ String email, String password, String role) async {
         }
       }
 
-      // Сохраняем токен, если он есть в ответе
-      if (userData['token'] != null) {
-        box.write('token', userData['token']);
-      }
-
-      // Сохраняем роль, если она есть в ответе
-      if (userData['role'] != null) {
-        box.write('role', userData['role']);
-        // Кэшируем соответствие email→role
-        box.write('roleByEmail:$email', userData['role']);
-      } else {
-        // Если роль не пришла с сервера, пробуем взять из кэша по email
-        final cachedRoleByEmail = box.read('roleByEmail:$email');
-        if (cachedRoleByEmail != null) {
-          box.write('role', cachedRoleByEmail);
+      // Сохраняем токен и роль только из токена
+      final token = userData['token']?.toString();
+      if (token != null && token.isNotEmpty) {
+        box.write('token', token);
+        final roleFromToken = _extractRoleFromToken(token);
+        if (roleFromToken != null) {
+          box.write('role', roleFromToken);
         } else {
-          // Если ничего нет, сохраняем роль по умолчанию
-          final existingRole = box.read('role');
-          if (existingRole == null) {
-            box.write('role', 'buyer');
-          }
+          box.remove('role');
         }
+        final userIdFromToken = _extractUserIdFromToken(token);
+        if (userIdFromToken != null) {
+          box.write('userId', userIdFromToken);
+        }
+      } else {
+        box.remove('role');
       }
 
       // Сохраняем или обновляем данные профиля из ответа сервера
@@ -247,17 +250,18 @@ String email, String password, String role) async {
       print('   - lastName: ${box.read<Map<String, dynamic>>('userProfile')?['lastName']}');
       print('   - email: ${box.read<Map<String, dynamic>>('userProfile')?['email']}');
 
-      // Перенаправляем согласно роли
-      final userRole = userData['role'] ?? box.read('role') ?? 'buyer';
+      // Перенаправляем согласно роли из токена
+      final userRole = box.read('role');
       if (userRole == 'seller') {
         Get.offAllNamed(AppRoutes.sellerHome);
       } else if (userRole == 'technician') {
         Get.offAllNamed(AppRoutes.techHome);
-      } else {
+      } else if (userRole == 'buyer') {
         Get.offAllNamed(AppRoutes.home);
+      } else {
+        Get.offAllNamed(AppRoutes.login);
       }
     } catch (e) {
-      Get.snackbar('Ошибка', _getErrorMessage(e));
     } finally {
       isLoading.value = false;
     }
@@ -266,6 +270,95 @@ String email, String password, String role) async {
   /// Получить токен авторизации
   String? getToken() {
     return box.read('token');
+  }
+
+  String? _extractRoleFromToken(String token) {
+    final payloadMap = _decodeTokenPayload(token);
+    if (payloadMap == null) {
+      return null;
+    }
+
+    final possibleKeys = [
+      'role',
+      'roles',
+      'userRole',
+      'roleName',
+      'Role',
+      'http://schemas.microsoft.com/ws/2008/06/identity/claims/role',
+      'http://schemas.microsoft.com/ws/2008/06/identity/claims/roles',
+      'http://schemas.microsoft.com/ws/2008/06/identity/claims/role-name',
+    ];
+
+    final roleValue = _extractFirstMatchingClaim(payloadMap, possibleKeys);
+    if (roleValue == null) {
+      return null;
+    }
+
+    if (roleValue is String) {
+      return roleValue;
+    }
+    if (roleValue is List && roleValue.isNotEmpty) {
+      return roleValue.first.toString();
+    }
+    return roleValue.toString();
+  }
+
+  String? _extractUserIdFromToken(String token) {
+    final payloadMap = _decodeTokenPayload(token);
+    if (payloadMap == null) {
+      return null;
+    }
+
+    final possibleKeys = [
+      'userId',
+      'sub',
+      'id',
+      'nameid',
+      'unique_name',
+      'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier',
+    ];
+
+    final userIdValue = _extractFirstMatchingClaim(payloadMap, possibleKeys);
+    return userIdValue?.toString();
+  }
+
+  Map<String, dynamic>? _decodeTokenPayload(String token) {
+    final parts = token.split('.');
+    if (parts.length != 3) {
+      return null;
+    }
+
+    final payload = parts[1];
+    String normalizedPayload = payload;
+    switch (payload.length % 4) {
+      case 1:
+        normalizedPayload += '===';
+        break;
+      case 2:
+        normalizedPayload += '==';
+        break;
+      case 3:
+        normalizedPayload += '=';
+        break;
+    }
+
+    try {
+      final decoded = utf8.decode(base64Url.decode(normalizedPayload));
+      return jsonDecode(decoded) as Map<String, dynamic>;
+    } catch (e) {
+      print('❌ Ошибка декодирования токена: $e');
+      return null;
+    }
+  }
+
+  dynamic _extractFirstMatchingClaim(
+      Map<String, dynamic> payload, List<String> keys) {
+    for (final key in keys) {
+      if (payload.containsKey(key)) {
+        return payload[key];
+      }
+    }
+    return null;
   }
 
   /// Получить email пользователя
@@ -288,7 +381,6 @@ String email, String password, String role) async {
     try {
       await _authRepository.forgotPassword(email);
     } catch (e) {
-      Get.snackbar('Ошибка', _getErrorMessage(e));
     } finally {
       isLoading.value = false;
     }
@@ -297,13 +389,8 @@ String email, String password, String role) async {
   /// Выход
   void logout() {
     box.remove('loggedIn');
-    // Не удаляем role, чтобы сохранить привязку роли, если сервер не возвращает роль при следующем логине
     box.remove('token');
-    // Храним последнюю роль и кэш соответствия email→role; очищаем только активный email и userId
-    final currentEmail = box.read('email');
-    if (currentEmail != null) {
-      // соответствие roleByEmail:<email> сохраняем, чтобы использовать при следующем входе
-    }
+    box.remove('role');
     box.remove('email');
     box.remove('userId');
     // Очищаем данные профиля при выходе, чтобы следующий пользователь не видел чужие данные

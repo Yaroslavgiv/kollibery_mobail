@@ -26,27 +26,11 @@ class KHelperFunctions {
 
   static void showSnackBar(String message,
       {Duration duration = const Duration(seconds: 2)}) {
-    ScaffoldMessenger.of(Get.context!).showSnackBar(
-      SnackBar(content: Text(message), duration: duration),
-    );
+    // Всплывающие подсказки отключены по требованию
   }
 
   static void showAlert(String title, String message) {
-    showDialog(
-      context: Get.context!,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(title, style: TextStyle(color: Colors.black)),
-          content: Text(message, style: TextStyle(color: Colors.black)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('OK', style: TextStyle(color: Colors.black)),
-            ),
-          ],
-        );
-      },
-    );
+    // Алерт-диалоги отключены по требованию
   }
 
   static void navigateToScreen(BuildContext context, Widget screen) {

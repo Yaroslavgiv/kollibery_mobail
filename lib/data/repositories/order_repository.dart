@@ -126,6 +126,13 @@ class OrderRepository {
     return orders;
   }
 
+  /// Получение последних 5 заказов истории с сервера
+  Future<List<OrderModel>> fetchLastFiveOrdersAsModels() async {
+    final ordersData = await OrderApi.fetchLastFiveOrders();
+    final orders = ordersData.map((data) => OrderModel.fromJson(data)).toList();
+    return orders;
+  }
+
   /// Получение заказов техника как OrderModel
   Future<List<OrderModel>> fetchTechOrdersAsModels() async {
     final ordersData = await fetchTechOrders();

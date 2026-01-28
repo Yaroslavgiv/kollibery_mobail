@@ -168,14 +168,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                           // Показываем сообщение об успехе
                           // Данные уже обновлены локально и отображаются в UI
-                          Get.snackbar(
-                            'Успех',
-                            'Данные профиля обновлены',
-                            snackPosition: SnackPosition.BOTTOM,
-                            backgroundColor: Colors.green,
-                            colorText: Colors.white,
-                            duration: Duration(seconds: 2),
-                          );
 
                           // Возвращаемся на предыдущий экран
                           // Данные уже обновлены и будут видны на экране профиля

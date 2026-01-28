@@ -164,10 +164,6 @@ class _TechAutopilotPickScreenState extends State<TechAutopilotPickScreen> {
         print('Response Headers: ${orderLocationResp.headers}');
       }
     } catch (e) {
-      Get.snackbar('Ошибка', 'Сеть: $e',
-          duration: Duration(seconds: 2),
-          backgroundColor: Colors.red,
-          colorText: Colors.white);
     } finally {
       if (mounted) setState(() => _sending = false);
     }

@@ -259,13 +259,6 @@ class _TechDeliveryCompletedScreenState
           });
           print('⚠️ Состояние откачено. isDroneOpen=$isDroneOpen');
         }
-        Get.snackbar(
-          'Ошибка',
-          'Не удалось ${previousState ? 'закрыть' : 'открыть'} отсек. Код: ${response.statusCode}',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          duration: Duration(seconds: 3),
-        );
       }
     } catch (e) {
       print('❌ Исключение при управлении отсеком: $e');
@@ -278,13 +271,6 @@ class _TechDeliveryCompletedScreenState
         });
         print('⚠️ Состояние откачено из-за исключения. isDroneOpen=$isDroneOpen');
       }
-      Get.snackbar(
-        'Ошибка',
-        'Ошибка сети: ${e.toString()}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: Duration(seconds: 3),
-      );
     }
   }
 
@@ -312,13 +298,6 @@ class _TechDeliveryCompletedScreenState
       Get.offAllNamed('/tech-home');
     } catch (e) {
       print('❌ Неожиданная ошибка при отправке дрона: $e');
-      Get.snackbar(
-        'Ошибка',
-        'Неожиданная ошибка: ${e.toString()}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: Duration(seconds: 4),
-      );
     } finally {
       if (mounted) {
         setState(() {

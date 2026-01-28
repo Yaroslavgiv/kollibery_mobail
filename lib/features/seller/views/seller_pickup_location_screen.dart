@@ -81,12 +81,6 @@ class _SellerPickupLocationScreenState
       _mapController.move(newPosition, 16.0);
     } catch (e) {
       print("Ошибка получения местоположения: $e");
-      Get.snackbar(
-        'Ошибка',
-        'Не удалось определить местоположение. Проверьте разрешения GPS.',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
     } finally {
       setState(() => _isLoading = false);
     }
@@ -147,12 +141,6 @@ class _SellerPickupLocationScreenState
 
   void _confirmPickupLocation() {
     if (_pickupMarker == null) {
-      Get.snackbar(
-        'Ошибка',
-        'Пожалуйста, выберите точку отправки на карте',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
       return;
     }
 

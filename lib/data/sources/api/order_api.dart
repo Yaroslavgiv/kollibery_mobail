@@ -116,6 +116,82 @@ class OrderApi {
     }
   }
 
+  /// Получение последних 5 заказов (история) с обогащением товарами
+  static Future<List<Map<String, dynamic>>> fetchLastFiveOrders() async {
+    try {
+      final token = _storage.read('token');
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+      };
+
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      print('=== ПОЛУЧЕНИЕ ПОСЛЕДНИХ 5 ЗАКАЗОВ ===');
+
+      final response = await http.get(
+        Uri.parse(LAST_FIVE_ORDERS_URL),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        if (body is! List) {
+          print('❌ Неверный формат ответа истории (ожидался List)');
+          return [];
+        }
+
+        final List<Map<String, dynamic>> enrichedOrders = [];
+
+        // Загружаем все товары один раз и строим карту по id
+        final productsMap = await _fetchAllProductsMap();
+
+        for (final orderData in body) {
+          if (orderData is! Map<String, dynamic>) {
+            continue;
+          }
+          final productId = orderData['productId'];
+
+          if (productId != null && productsMap.containsKey(productId)) {
+            final productInfo = productsMap[productId]!;
+            final enrichedOrder = {
+              ...orderData,
+              'productName': productInfo['name'] ??
+                  productInfo['title'] ??
+                  productInfo['productName'] ??
+                  'Товар #$productId',
+              'productImage': productInfo['image'] ??
+                  productInfo['imageUrl'] ??
+                  productInfo['productImage'] ??
+                  '',
+              'productDescription': productInfo['description'] ??
+                  productInfo['productDescription'] ??
+                  '',
+              'productPrice':
+                  productInfo['price'] ?? productInfo['productPrice'] ?? 0.0,
+              'productCategory': productInfo['category'] ??
+                  productInfo['productCategory'] ??
+                  '',
+            };
+            enrichedOrders.add(enrichedOrder);
+          } else {
+            enrichedOrders.add(orderData);
+          }
+        }
+
+        print('✅ Получено ${enrichedOrders.length} заказов истории');
+        return enrichedOrders;
+      } else {
+        throw Exception(
+            'Ошибка загрузки истории заказов: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Исключение при получении истории заказов: $e');
+      return [];
+    }
+  }
+
   /// Размещение нового заказа
   static Future<bool> placeOrder({
     required String userId,

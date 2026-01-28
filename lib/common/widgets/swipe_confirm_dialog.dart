@@ -50,20 +50,9 @@ class SwipeConfirmDialog extends StatefulWidget {
     IconData? icon,
     Color? iconColor,
   }) {
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => SwipeConfirmDialog(
-        title: title,
-        message: message,
-        confirmText: confirmText,
-        cancelText: cancelText,
-        confirmColor: confirmColor,
-        onConfirm: onConfirm,
-        icon: icon,
-        iconColor: iconColor,
-      ),
-    );
+    // Алерт-диалоги отключены по требованию — выполняем действие сразу
+    onConfirm();
+    return Future.value(true);
   }
 
   @override

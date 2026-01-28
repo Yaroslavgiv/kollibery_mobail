@@ -35,12 +35,6 @@ class _SellerOrderCompletedScreenState
           '⚠️ SellerOrderCompletedScreen: Аргументы не переданы или неверного типа');
       // Показываем предупреждение пользователю
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Get.snackbar(
-          'Предупреждение',
-          'Данные заказа не найдены',
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-        );
       });
     }
   }
@@ -265,12 +259,6 @@ class _SellerOrderCompletedScreenState
           Get.offAllNamed('/seller-home');
         } catch (e) {
           print('❌ Ошибка при отправке дрона: $e');
-          Get.snackbar(
-            'Ошибка',
-            'Ошибка при отправке дрона: $e',
-            backgroundColor: Colors.red,
-            colorText: Colors.white,
-          );
           // Переход на главный экран продавца даже при ошибке
           Get.offAllNamed('/seller-home');
         } finally {
@@ -338,13 +326,6 @@ class _SellerOrderCompletedScreenState
           });
           print('⚠️ Состояние откачено. isDroneOpen=$isDroneOpen');
         }
-        Get.snackbar(
-          'Ошибка',
-          'Не удалось ${previousState ? 'закрыть' : 'открыть'} отсек. Код: ${response.statusCode}',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          duration: Duration(seconds: 3),
-        );
       }
     } catch (e) {
       print('❌ Исключение при управлении отсеком: $e');
@@ -358,13 +339,6 @@ class _SellerOrderCompletedScreenState
         print(
             '⚠️ Состояние откачено из-за исключения. isDroneOpen=$isDroneOpen');
       }
-      Get.snackbar(
-        'Ошибка',
-        'Ошибка сети: ${e.toString()}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: Duration(seconds: 3),
-      );
     }
   }
 }

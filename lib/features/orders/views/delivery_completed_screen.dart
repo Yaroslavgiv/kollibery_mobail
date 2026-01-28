@@ -289,13 +289,6 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
           });
           print('⚠️ Состояние откачено. isDroneOpen=$isDroneOpen');
         }
-        Get.snackbar(
-          'Ошибка',
-          'Не удалось ${previousState ? 'закрыть' : 'открыть'} отсек. Код: ${response.statusCode}',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          duration: Duration(seconds: 3),
-        );
       }
     } catch (e) {
       print('❌ Исключение при управлении отсеком: $e');
@@ -309,13 +302,6 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
         print(
             '⚠️ Состояние откачено из-за исключения. isDroneOpen=$isDroneOpen');
       }
-      Get.snackbar(
-        'Ошибка',
-        'Ошибка сети: ${e.toString()}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: Duration(seconds: 3),
-      );
     }
   }
 
@@ -362,22 +348,8 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
       }
 
       // Показываем сообщение об успехе
-      Get.snackbar(
-        'Успешно',
-        'Заказ получен и перемещен в историю',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        duration: Duration(seconds: 2),
-      );
     } catch (e) {
       print('❌ Ошибка при подтверждении получения заказа: $e');
-      Get.snackbar(
-        'Ошибка',
-        'Не удалось подтвердить получение заказа: ${e.toString()}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: Duration(seconds: 4),
-      );
     } finally {
       if (!_isTechnician && mounted) {
         setState(() {

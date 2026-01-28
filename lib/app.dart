@@ -13,7 +13,7 @@ class App extends StatelessWidget {
   Widget build(BuildContext context) {
     final box = GetStorage();
     bool isLoggedIn = box.read('loggedIn') ?? false;
-    final String role = box.read('role') ?? 'buyer';
+    final String? role = box.read('role');
 
     // Отладочная информация
     print('=== APP.DART DEBUG ===');
@@ -30,7 +30,9 @@ class App extends StatelessWidget {
             ? AppRoutes.sellerHome
             : role == 'technician'
                 ? AppRoutes.techHome
-                : AppRoutes.home);
+                : role == 'buyer'
+                    ? AppRoutes.home
+                    : AppRoutes.login);
 
     print('initialRoute: $initialRoute');
     print('=== END DEBUG ===');

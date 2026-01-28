@@ -327,6 +327,8 @@ class _TechOrdersScreenState extends State<TechOrdersScreen>
 
   void _showOrderDetails(
       BuildContext context, OrderModel order, bool isActive) {
+    // Алерт-диалоги отключены по требованию
+    return;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

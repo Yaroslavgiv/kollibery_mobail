@@ -26,19 +26,39 @@ class DeviceStatusData {
 
   factory DeviceStatusData.fromJson(Map<String, dynamic> json) {
     DeviceStatus status;
-    final statusStr = json['status']?.toString().toLowerCase() ?? 'unknown';
+    final dynamic data = json['data'];
+    final String statusStr = (json['status'] ??
+                json['state'] ??
+                json['connection'] ??
+                (data is Map<String, dynamic>
+                    ? data['status'] ?? data['state']
+                    : null))
+            ?.toString()
+            .toLowerCase() ??
+        'unknown';
 
-    if (statusStr.contains('connected') || statusStr.contains('на связи')) {
-      status = DeviceStatus.connected;
-    } else if (statusStr.contains('disconnected') ||
-        statusStr.contains('нет связи')) {
+    // Сервер может присылать разные варианты статуса, включая опечатки
+    // Сначала проверяем "disconnected", чтобы не сработало на "connected"
+    if (statusStr.contains('disconnected') || statusStr.contains('нет связи')) {
       status = DeviceStatus.disconnected;
+    } else if (statusStr.contains('connected') ||
+        statusStr.contains('на связи') ||
+        statusStr.contains('подключ') ||
+        statusStr.contains('конект')) {
+      status = DeviceStatus.connected;
     } else {
       status = DeviceStatus.unknown;
     }
 
+    final String deviceName = (json['deviceName'] ??
+                json['device'] ??
+                json['name'] ??
+                (data is Map<String, dynamic> ? data['deviceName'] : null))
+            ?.toString() ??
+        'Unknown';
+
     return DeviceStatusData(
-      deviceName: json['deviceName'] ?? json['device'] ?? 'Unknown',
+      deviceName: deviceName,
       status: status,
       additionalData: json['data'],
       timestamp: DateTime.now(),
@@ -163,7 +183,12 @@ class DeviceStatusWebSocket {
           _handleMessage(data);
         },
         onError: (error) {
-          // print('❌ WebSocket ошибка для $deviceType: $error');
+          if (deviceType == 'dronebox') {
+            print('❌ WebSocket ошибка дронбокса: $error');
+          }
+          if (deviceType == 'drone') {
+            print('❌ WebSocket ошибка дрона: $error');
+          }
           _isConnected = false;
           _statusController?.add(DeviceStatusData(
             deviceName: deviceType == 'drone'
@@ -175,7 +200,12 @@ class DeviceStatusWebSocket {
           _scheduleReconnect();
         },
         onDone: () {
-          // print('🔌 WebSocket соединение закрыто для $deviceType');
+          if (deviceType == 'dronebox') {
+            print('🔌 WebSocket дронбокса закрыт');
+          }
+          if (deviceType == 'drone') {
+            print('🔌 WebSocket дрона закрыт');
+          }
           _isConnected = false;
           _statusController?.add(DeviceStatusData(
             deviceName: deviceType == 'drone'
@@ -190,7 +220,12 @@ class DeviceStatusWebSocket {
       );
 
       _isConnected = true;
-      // print('✅ WebSocket подключен для $deviceType');
+      if (deviceType == 'dronebox') {
+        print('✅ WebSocket дронбокса подключен: $wsUrlString');
+      }
+      if (deviceType == 'drone') {
+        print('✅ WebSocket дрона подключен: $wsUrlString');
+      }
 
       // Отправляем начальный запрос статуса
       _requestStatus();
@@ -210,11 +245,23 @@ class DeviceStatusWebSocket {
         jsonString = utf8.decode(data);
       }
 
-      // print('📥 Получено сообщение от $deviceType: $jsonString');
+      // Логируем входящие статусы дронбокса, чтобы увидеть точный формат
+      if (deviceType == 'dronebox') {
+        print('📥 Статус дронбокса (raw): $jsonString');
+      }
+      if (deviceType == 'drone') {
+        print('📥 Статус дрона (raw): $jsonString');
+      }
 
       final json = jsonDecode(jsonString) as Map<String, dynamic>;
 
       final statusData = DeviceStatusData.fromJson(json);
+      if (deviceType == 'dronebox') {
+        print('✅ Статус дронбокса (parsed): ${statusData.status}');
+      }
+      if (deviceType == 'drone') {
+        print('✅ Статус дрона (parsed): ${statusData.status}');
+      }
       _statusController?.add(statusData);
     } catch (e) {
       // print('❌ Ошибка обработки сообщения от $deviceType: $e');

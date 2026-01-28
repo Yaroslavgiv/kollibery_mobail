@@ -11,15 +11,20 @@ class TechDroneboxScreen extends StatefulWidget {
 
 class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
   late DroneboxStatusController _statusController;
-  
+
   // Состояния дронбокса
   bool isRoofOpen = false;
   bool isPositionCenter = true;
   bool isTableUp = false;
   bool isHatchOpen = false;
   bool isDroneBatteryInstalled = false;
-  List<String> batteryStates = ['НЕТ', 'НЕТ', 'УСТАНОВЛЕН', 'ЗАРЯД']; // 0-дрон, 1-3 батареи
-  
+  List<String> batteryStates = [
+    'НЕТ',
+    'НЕТ',
+    'УСТАНОВЛЕН',
+    'ЗАРЯД'
+  ]; // 0-дрон, 1-3 батареи
+
   // Флаги загрузки
   bool isControllingRoof = false;
   bool isControllingPosition = false;
@@ -124,31 +129,34 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.blue,
-          automaticallyImplyLeading: false,
+      appBar: AppBar(
+        backgroundColor: Colors.blue,
+        automaticallyImplyLeading: false,
         title: Text('Дронбокс'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             SizedBox(height: 8),
-            
+
             // Информация об устройстве
             Obx(() {
               final statusText = _statusController.getStatusText();
               final isConnected = _statusController.isConnected.value;
               final deviceName = _statusController.deviceName.value;
-              
+
               return Container(
                 padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                  color: isConnected ? Colors.yellow.shade100 : Colors.red.shade50,
+                decoration: BoxDecoration(
+                  color:
+                      isConnected ? Colors.yellow.shade100 : Colors.red.shade50,
                   borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                    color: isConnected ? Colors.yellow.shade300 : Colors.red.shade300,
+                  border: Border.all(
+                    color: isConnected
+                        ? Colors.yellow.shade300
+                        : Colors.red.shade300,
                   ),
                 ),
                 child: Column(
@@ -159,7 +167,8 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                         Expanded(
                           child: Text(
                             'Аппарат: $deviceName',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                         ),
                         if (!isConnected)
@@ -180,22 +189,24 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                             shape: BoxShape.circle,
                             color: isConnected ? Colors.green : Colors.red,
                           ),
-                              ),
-                              SizedBox(width: 8),
-                              Text(
+                        ),
+                        SizedBox(width: 8),
+                        Text(
                           'Статус: $statusText',
-                                style: TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
-                            color: isConnected ? Colors.green.shade700 : Colors.red.shade700,
-                                ),
-                              ),
-                            ],
+                            color: isConnected
+                                ? Colors.green.shade700
+                                : Colors.red.shade700,
                           ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               );
             }),
-            
+
             SizedBox(height: 16),
 
             // Блок управления крышей
@@ -209,25 +220,25 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                     isActive: !isRoofOpen && !isControllingRoof,
                     activeColor: Colors.green,
                     onPressed: () async {
-                                    SwipeConfirmDialog.show(
-                                      context: context,
+                      SwipeConfirmDialog.show(
+                        context: context,
                         title: 'Открыть крышу',
                         message: 'Вы уверены, что хотите открыть крышу?',
                         confirmText: 'Открыть',
                         confirmColor: Colors.green,
                         icon: Icons.roofing,
-                                      onConfirm: () async {
+                        onConfirm: () async {
                           setState(() => isControllingRoof = true);
                           try {
                             final response = await FlightApi.controlRoof(true);
-                            if (response.statusCode >= 200 && response.statusCode < 300) {
+                            if (response.statusCode >= 200 &&
+                                response.statusCode < 300) {
                               setState(() => isRoofOpen = true);
                             }
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось открыть крышу',
-                                backgroundColor: Colors.red, colorText: Colors.white);
-                                        } finally {
-                            if (mounted) setState(() => isControllingRoof = false);
+                          } finally {
+                            if (mounted)
+                              setState(() => isControllingRoof = false);
                           }
                         },
                       );
@@ -250,18 +261,18 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                           setState(() => isControllingRoof = true);
                           try {
                             final response = await FlightApi.controlRoof(false);
-                            if (response.statusCode >= 200 && response.statusCode < 300) {
+                            if (response.statusCode >= 200 &&
+                                response.statusCode < 300) {
                               setState(() => isRoofOpen = false);
                             }
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось закрыть крышу',
-                                backgroundColor: Colors.red, colorText: Colors.white);
                           } finally {
-                            if (mounted) setState(() => isControllingRoof = false);
-                                        }
-                                      },
-                                    );
-                                  },
+                            if (mounted)
+                              setState(() => isControllingRoof = false);
+                          }
+                        },
+                      );
+                    },
                   ),
                 ],
               ),
@@ -290,15 +301,16 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                         onConfirm: () async {
                           setState(() => isControllingPosition = true);
                           try {
-                            final response = await FlightApi.controlPosition(true);
-                            if (response.statusCode >= 200 && response.statusCode < 300) {
+                            final response =
+                                await FlightApi.controlPosition(true);
+                            if (response.statusCode >= 200 &&
+                                response.statusCode < 300) {
                               setState(() => isPositionCenter = true);
                             }
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось переместить в центр',
-                                backgroundColor: Colors.red, colorText: Colors.white);
                           } finally {
-                            if (mounted) setState(() => isControllingPosition = false);
+                            if (mounted)
+                              setState(() => isControllingPosition = false);
                           }
                         },
                       );
@@ -320,15 +332,16 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                         onConfirm: () async {
                           setState(() => isControllingPosition = true);
                           try {
-                            final response = await FlightApi.controlPosition(false);
-                            if (response.statusCode >= 200 && response.statusCode < 300) {
+                            final response =
+                                await FlightApi.controlPosition(false);
+                            if (response.statusCode >= 200 &&
+                                response.statusCode < 300) {
                               setState(() => isPositionCenter = false);
                             }
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось переместить к краю',
-                                backgroundColor: Colors.red, colorText: Colors.white);
                           } finally {
-                            if (mounted) setState(() => isControllingPosition = false);
+                            if (mounted)
+                              setState(() => isControllingPosition = false);
                           }
                         },
                       );
@@ -362,14 +375,14 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                           setState(() => isControllingTable = true);
                           try {
                             final response = await FlightApi.controlTable(true);
-                            if (response.statusCode >= 200 && response.statusCode < 300) {
+                            if (response.statusCode >= 200 &&
+                                response.statusCode < 300) {
                               setState(() => isTableUp = true);
                             }
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось поднять стол',
-                                backgroundColor: Colors.red, colorText: Colors.white);
                           } finally {
-                            if (mounted) setState(() => isControllingTable = false);
+                            if (mounted)
+                              setState(() => isControllingTable = false);
                           }
                         },
                       );
@@ -391,15 +404,16 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                         onConfirm: () async {
                           setState(() => isControllingTable = true);
                           try {
-                            final response = await FlightApi.controlTable(false);
-                            if (response.statusCode >= 200 && response.statusCode < 300) {
+                            final response =
+                                await FlightApi.controlTable(false);
+                            if (response.statusCode >= 200 &&
+                                response.statusCode < 300) {
                               setState(() => isTableUp = false);
                             }
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось опустить стол',
-                                backgroundColor: Colors.red, colorText: Colors.white);
                           } finally {
-                            if (mounted) setState(() => isControllingTable = false);
+                            if (mounted)
+                              setState(() => isControllingTable = false);
                           }
                         },
                       );
@@ -433,14 +447,14 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                           setState(() => isControllingHatch = true);
                           try {
                             final response = await FlightApi.controlHatch(true);
-                            if (response.statusCode >= 200 && response.statusCode < 300) {
+                            if (response.statusCode >= 200 &&
+                                response.statusCode < 300) {
                               setState(() => isHatchOpen = true);
                             }
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось открыть люк',
-                                backgroundColor: Colors.red, colorText: Colors.white);
                           } finally {
-                            if (mounted) setState(() => isControllingHatch = false);
+                            if (mounted)
+                              setState(() => isControllingHatch = false);
                           }
                         },
                       );
@@ -462,25 +476,26 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                         onConfirm: () async {
                           setState(() => isControllingHatch = true);
                           try {
-                            final response = await FlightApi.controlHatch(false);
-                            if (response.statusCode >= 200 && response.statusCode < 300) {
+                            final response =
+                                await FlightApi.controlHatch(false);
+                            if (response.statusCode >= 200 &&
+                                response.statusCode < 300) {
                               setState(() => isHatchOpen = false);
                             }
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось закрыть люк',
-                                backgroundColor: Colors.red, colorText: Colors.white);
                           } finally {
-                            if (mounted) setState(() => isControllingHatch = false);
+                            if (mounted)
+                              setState(() => isControllingHatch = false);
                           }
                         },
                       );
                     },
-                        ),
-                      ],
-                    ),
                   ),
+                ],
+              ),
+            ),
 
-                  SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Блок управления батареей дрона
             _buildControlBlock(
@@ -490,7 +505,8 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                 children: [
                   _buildActionButton(
                     text: 'УСТАНОВИТЬ',
-                    isActive: batteryStates[0] == 'НЕТ' && !isControllingDroneBattery,
+                    isActive:
+                        batteryStates[0] == 'НЕТ' && !isControllingDroneBattery,
                     activeColor: Colors.green,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -503,15 +519,16 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                         onConfirm: () async {
                           setState(() => isControllingDroneBattery = true);
                           try {
-                            final response = await FlightApi.controlDroneBattery(true);
-                            if (response.statusCode >= 200 && response.statusCode < 300) {
+                            final response =
+                                await FlightApi.controlDroneBattery(true);
+                            if (response.statusCode >= 200 &&
+                                response.statusCode < 300) {
                               setState(() => batteryStates[0] = 'УСТАНОВЛЕН');
                             }
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось установить батарею',
-                                backgroundColor: Colors.red, colorText: Colors.white);
                           } finally {
-                            if (mounted) setState(() => isControllingDroneBattery = false);
+                            if (mounted)
+                              setState(() => isControllingDroneBattery = false);
                           }
                         },
                       );
@@ -520,7 +537,8 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                   SizedBox(width: 8),
                   _buildActionButton(
                     text: 'Снять',
-                    isActive: batteryStates[0] == 'УСТАНОВЛЕН' && !isControllingDroneBattery,
+                    isActive: batteryStates[0] == 'УСТАНОВЛЕН' &&
+                        !isControllingDroneBattery,
                     activeColor: Colors.orange,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -533,15 +551,16 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                         onConfirm: () async {
                           setState(() => isControllingDroneBattery = true);
                           try {
-                            final response = await FlightApi.controlDroneBattery(false);
-                            if (response.statusCode >= 200 && response.statusCode < 300) {
+                            final response =
+                                await FlightApi.controlDroneBattery(false);
+                            if (response.statusCode >= 200 &&
+                                response.statusCode < 300) {
                               setState(() => batteryStates[0] = 'НЕТ');
                             }
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось снять батарею',
-                                backgroundColor: Colors.red, colorText: Colors.white);
                           } finally {
-                            if (mounted) setState(() => isControllingDroneBattery = false);
+                            if (mounted)
+                              setState(() => isControllingDroneBattery = false);
                           }
                         },
                       );
@@ -557,9 +576,10 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
             ...List.generate(3, (index) {
               final batteryNum = index + 1;
               final batteryState = batteryStates[batteryNum];
-              final isInstalled = batteryState == 'УСТАНОВЛЕН' || batteryState == 'ЗАРЯД';
+              final isInstalled =
+                  batteryState == 'УСТАНОВЛЕН' || batteryState == 'ЗАРЯД';
               final isCharging = batteryState == 'ЗАРЯД';
-              
+
               return Column(
                 children: [
                   _buildControlBlock(
@@ -571,7 +591,8 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                           children: [
                             _buildActionButton(
                               text: 'УСТАНОВИТЬ',
-                              isActive: batteryState == 'НЕТ' && !isControllingBatteries[index],
+                              isActive: batteryState == 'НЕТ' &&
+                                  !isControllingBatteries[index],
                               activeColor: Colors.green,
                               onPressed: () async {
                                 SwipeConfirmDialog.show(
@@ -582,20 +603,26 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                                   confirmColor: Colors.green,
                                   icon: Icons.battery_charging_full,
                                   onConfirm: () async {
-                                    setState(() => isControllingBatteries[index] = true);
+                                    setState(() =>
+                                        isControllingBatteries[index] = true);
                                     try {
-                                      final response = await FlightApi.controlBoxBattery(
+                                      final response =
+                                          await FlightApi.controlBoxBattery(
                                         batteryNumber: batteryNum,
                                         action: 'install',
                                       );
-                                      if (response.statusCode >= 200 && response.statusCode < 300) {
-                                        setState(() => batteryStates[batteryNum] = 'УСТАНОВЛЕН');
+                                      if (response.statusCode >= 200 &&
+                                          response.statusCode < 300) {
+                                        setState(() =>
+                                            batteryStates[batteryNum] =
+                                                'УСТАНОВЛЕН');
                                       }
                                     } catch (e) {
-                                      Get.snackbar('Ошибка', 'Не удалось установить батарею',
-                                          backgroundColor: Colors.red, colorText: Colors.white);
                                     } finally {
-                                      if (mounted) setState(() => isControllingBatteries[index] = false);
+                                      if (mounted)
+                                        setState(() =>
+                                            isControllingBatteries[index] =
+                                                false);
                                     }
                                   },
                                 );
@@ -604,7 +631,8 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                             SizedBox(width: 8),
                             _buildActionButton(
                               text: 'Снять',
-                              isActive: isInstalled && !isControllingBatteries[index],
+                              isActive:
+                                  isInstalled && !isControllingBatteries[index],
                               activeColor: Colors.orange,
                               onPressed: () async {
                                 SwipeConfirmDialog.show(
@@ -615,20 +643,25 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                                   confirmColor: Colors.orange,
                                   icon: Icons.battery_std,
                                   onConfirm: () async {
-                                    setState(() => isControllingBatteries[index] = true);
+                                    setState(() =>
+                                        isControllingBatteries[index] = true);
                                     try {
-                                      final response = await FlightApi.controlBoxBattery(
+                                      final response =
+                                          await FlightApi.controlBoxBattery(
                                         batteryNumber: batteryNum,
                                         action: 'remove',
                                       );
-                                      if (response.statusCode >= 200 && response.statusCode < 300) {
-                                        setState(() => batteryStates[batteryNum] = 'НЕТ');
+                                      if (response.statusCode >= 200 &&
+                                          response.statusCode < 300) {
+                                        setState(() =>
+                                            batteryStates[batteryNum] = 'НЕТ');
                                       }
                                     } catch (e) {
-                                      Get.snackbar('Ошибка', 'Не удалось снять батарею',
-                                          backgroundColor: Colors.red, colorText: Colors.white);
                                     } finally {
-                                      if (mounted) setState(() => isControllingBatteries[index] = false);
+                                      if (mounted)
+                                        setState(() =>
+                                            isControllingBatteries[index] =
+                                                false);
                                     }
                                   },
                                 );
@@ -648,26 +681,35 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                                         // Отключить заряд
                                         SwipeConfirmDialog.show(
                                           context: context,
-                                          title: 'Отключить заряд батареи $batteryNum',
-                                          message: 'Отключить зарядку батареи $batteryNum?',
+                                          title:
+                                              'Отключить заряд батареи $batteryNum',
+                                          message:
+                                              'Отключить зарядку батареи $batteryNum?',
                                           confirmText: 'Отключить',
                                           confirmColor: Colors.orange,
                                           icon: Icons.battery_charging_full,
                                           onConfirm: () async {
-                                            setState(() => isControllingBatteries[index] = true);
+                                            setState(() =>
+                                                isControllingBatteries[index] =
+                                                    true);
                                             try {
-                                              final response = await FlightApi.controlBoxBattery(
+                                              final response = await FlightApi
+                                                  .controlBoxBattery(
                                                 batteryNumber: batteryNum,
                                                 action: 'discharge',
                                               );
-                                              if (response.statusCode >= 200 && response.statusCode < 300) {
-                                                setState(() => batteryStates[batteryNum] = 'УСТАНОВЛЕН');
+                                              if (response.statusCode >= 200 &&
+                                                  response.statusCode < 300) {
+                                                setState(() =>
+                                                    batteryStates[batteryNum] =
+                                                        'УСТАНОВЛЕН');
                                               }
                                             } catch (e) {
-                                              Get.snackbar('Ошибка', 'Не удалось отключить заряд',
-                                                  backgroundColor: Colors.red, colorText: Colors.white);
                                             } finally {
-                                              if (mounted) setState(() => isControllingBatteries[index] = false);
+                                              if (mounted)
+                                                setState(() =>
+                                                    isControllingBatteries[
+                                                        index] = false);
                                             }
                                           },
                                         );
@@ -676,32 +718,41 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                                         SwipeConfirmDialog.show(
                                           context: context,
                                           title: 'Зарядить батарею $batteryNum',
-                                          message: 'Начать зарядку батареи $batteryNum?',
+                                          message:
+                                              'Начать зарядку батареи $batteryNum?',
                                           confirmText: 'Зарядить',
                                           confirmColor: Colors.green,
                                           icon: Icons.battery_charging_full,
                                           onConfirm: () async {
-                                            setState(() => isControllingBatteries[index] = true);
+                                            setState(() =>
+                                                isControllingBatteries[index] =
+                                                    true);
                                             try {
-                                              final response = await FlightApi.controlBoxBattery(
+                                              final response = await FlightApi
+                                                  .controlBoxBattery(
                                                 batteryNumber: batteryNum,
                                                 action: 'charge',
                                               );
-                                              if (response.statusCode >= 200 && response.statusCode < 300) {
-                                                setState(() => batteryStates[batteryNum] = 'ЗАРЯД');
+                                              if (response.statusCode >= 200 &&
+                                                  response.statusCode < 300) {
+                                                setState(() =>
+                                                    batteryStates[batteryNum] =
+                                                        'ЗАРЯД');
                                               }
                                             } catch (e) {
-                                              Get.snackbar('Ошибка', 'Не удалось начать зарядку',
-                                                  backgroundColor: Colors.red, colorText: Colors.white);
                                             } finally {
-                                              if (mounted) setState(() => isControllingBatteries[index] = false);
+                                              if (mounted)
+                                                setState(() =>
+                                                    isControllingBatteries[
+                                                        index] = false);
                                             }
                                           },
                                         );
                                       }
                                     },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: isCharging ? Colors.orange : Colors.green,
+                                backgroundColor:
+                                    isCharging ? Colors.orange : Colors.green,
                                 foregroundColor: Colors.white,
                                 padding: EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
@@ -730,43 +781,42 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
             // Кнопка стоп
             ElevatedButton.icon(
               onPressed: isStopping
-                                ? null
-                                : () {
-                                    SwipeConfirmDialog.show(
-                                      context: context,
+                  ? null
+                  : () {
+                      SwipeConfirmDialog.show(
+                        context: context,
                         title: 'Стоп дронбокса',
-                        message: 'Вы уверены, что хотите остановить все операции дронбокса?',
+                        message:
+                            'Вы уверены, что хотите остановить все операции дронбокса?',
                         confirmText: 'Остановить',
                         confirmColor: Colors.red,
                         icon: Icons.stop,
-                                      onConfirm: () async {
+                        onConfirm: () async {
                           setState(() => isStopping = true);
                           try {
                             await FlightApi.droneboxStop();
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось остановить дронбокс',
-                                backgroundColor: Colors.red, colorText: Colors.white);
-                                        } finally {
+                          } finally {
                             if (mounted) setState(() => isStopping = false);
-                                        }
-                                      },
-                                    );
-                                  },
+                          }
+                        },
+                      );
+                    },
               icon: isStopping
-                                ? SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
+                  ? SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
                   : Icon(Icons.stop, size: 28),
               label: Text(isStopping ? 'Остановка...' : 'СТОП'),
-                            style: ElevatedButton.styleFrom(
-                              padding: EdgeInsets.symmetric(vertical: 16),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
+                foregroundColor: Colors.white,
               ),
             ),
 

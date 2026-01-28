@@ -55,31 +55,10 @@ class SellerProductCard extends StatelessWidget {
         final repository = ProductRepository();
         final success = await repository.deleteProduct(product.id);
         if (success) {
-          Get.snackbar(
-            'Успех',
-            'Товар успешно удален',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
-          );
           onDeleted?.call();
         } else {
-          Get.snackbar(
-            'Ошибка',
-            'Не удалось удалить товар',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.red,
-            colorText: Colors.white,
-          );
         }
       } catch (e) {
-        Get.snackbar(
-          'Ошибка',
-          'Ошибка при удалении товара: $e',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
       }
     }
   }

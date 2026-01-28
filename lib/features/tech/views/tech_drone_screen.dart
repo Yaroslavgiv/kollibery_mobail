@@ -209,7 +209,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                 children: [
                   _buildActionButton(
                     text: 'ОТКРЫТЬ',
-                    isActive: !isLockOpen && !isControllingLock,
+                    isActive: true,
                     activeColor: Colors.green,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -229,9 +229,6 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                               setState(() => isLockOpen = true);
                             }
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось открыть замок',
-                                backgroundColor: Colors.red,
-                                colorText: Colors.white);
                           } finally {
                             if (mounted)
                               setState(() => isControllingLock = false);
@@ -243,7 +240,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                   SizedBox(width: 8),
                   _buildActionButton(
                     text: 'ЗАКРЫТЬ',
-                    isActive: isLockOpen && !isControllingLock,
+                    isActive: true,
                     activeColor: Colors.orange,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -263,9 +260,6 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                               setState(() => isLockOpen = false);
                             }
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось закрыть замок',
-                                backgroundColor: Colors.red,
-                                colorText: Colors.white);
                           } finally {
                             if (mounted)
                               setState(() => isControllingLock = false);
@@ -288,7 +282,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                 children: [
                   _buildActionButton(
                     text: 'ОТКРЫТЬ',
-                    isActive: !isBoxOpen && !isControllingBox,
+                    isActive: true,
                     activeColor: Colors.green,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -309,9 +303,6 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                               setState(() => isBoxOpen = true);
                             }
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось открыть короб',
-                                backgroundColor: Colors.red,
-                                colorText: Colors.white);
                           } finally {
                             if (mounted)
                               setState(() => isControllingBox = false);
@@ -323,7 +314,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                   SizedBox(width: 8),
                   _buildActionButton(
                     text: 'ЗАКРЫТЬ',
-                    isActive: isBoxOpen && !isControllingBox,
+                    isActive: true,
                     activeColor: Colors.orange,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -345,9 +336,6 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                               setState(() => isBoxOpen = false);
                             }
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось закрыть короб',
-                                backgroundColor: Colors.red,
-                                colorText: Colors.white);
                           } finally {
                             if (mounted)
                               setState(() => isControllingBox = false);
@@ -392,9 +380,6 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                           try {
                             await FlightApi.testBacklight(colorNumber: 1);
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось установить свет',
-                                backgroundColor: Colors.red,
-                                colorText: Colors.white);
                           } finally {
                             if (mounted) setState(() => isSendingLight = false);
                           }
@@ -423,9 +408,6 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                           try {
                             await FlightApi.testBacklight(colorNumber: 2);
                           } catch (e) {
-                            Get.snackbar('Ошибка', 'Не удалось установить свет',
-                                backgroundColor: Colors.red,
-                                colorText: Colors.white);
                           } finally {
                             if (mounted) setState(() => isSendingLight = false);
                           }
@@ -450,26 +432,11 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            // Кнопка ВЫСОТА - открыть диалог выбора высоты
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: Text('Выбор высоты'),
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [1, 2, 3, 4, 5]
-                                      .map((h) => ListTile(
-                                            title: Text('$h М'),
-                                            onTap: () {
-                                              setState(
-                                                  () => selectedDistance = h);
-                                              Navigator.pop(context);
-                                            },
-                                          ))
-                                      .toList(),
-                                ),
-                              ),
-                            );
+                            // Без диалогов: циклически меняем высоту 1..5
+                            setState(() {
+                              selectedDistance =
+                                  selectedDistance >= 5 ? 1 : selectedDistance + 1;
+                            });
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
@@ -496,7 +463,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                     children: [
                       _buildActionButton(
                         text: 'ВВЕРХ',
-                        isActive: !isSendingTest,
+                        isActive: true,
                         activeColor: Colors.green,
                         onPressed: () async {
                           SwipeConfirmDialog.show(
@@ -514,10 +481,6 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                                   distance: selectedDistance,
                                 );
                               } catch (e) {
-                                Get.snackbar(
-                                    'Ошибка', 'Не удалось выполнить взлет',
-                                    backgroundColor: Colors.red,
-                                    colorText: Colors.white);
                               } finally {
                                 if (mounted)
                                   setState(() => isSendingTest = false);
@@ -529,9 +492,32 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                       SizedBox(width: 8),
                       _buildActionButton(
                         text: 'ВНИЗ',
-                        isActive: false, // Всегда неактивна согласно скриншоту
+                        isActive: true,
                         activeColor: Colors.orange,
-                        onPressed: null,
+                        onPressed: () async {
+                          SwipeConfirmDialog.show(
+                            context: context,
+                            title: 'Снижение',
+                            message:
+                                'Выполнить снижение с $selectedDistance м?',
+                            confirmText: 'Снизить',
+                            confirmColor: Colors.orange,
+                            icon: Symbols.drone,
+                            onConfirm: () async {
+                              setState(() => isSendingTest = true);
+                              try {
+                                await FlightApi.testSystemCheck(
+                                  isActive: false,
+                                  distance: selectedDistance,
+                                );
+                              } catch (e) {
+                              } finally {
+                                if (mounted)
+                                  setState(() => isSendingTest = false);
+                              }
+                            },
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -591,10 +577,6 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                               try {
                                 await FlightApi.droneStartFlight();
                               } catch (e) {
-                                Get.snackbar(
-                                    'Ошибка', 'Не удалось начать полет',
-                                    backgroundColor: Colors.red,
-                                    colorText: Colors.white);
                                 setState(() => isFlightStarted = false);
                               }
                             },
@@ -604,9 +586,25 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                       SizedBox(width: 8),
                       _buildActionButton(
                         text: 'ОТМЕНА',
-                        isActive: false, // Всегда неактивна согласно скриншоту
+                        isActive: true,
                         activeColor: Colors.orange,
-                        onPressed: null,
+                        onPressed: () async {
+                          SwipeConfirmDialog.show(
+                            context: context,
+                            title: 'Отмена полета',
+                            message: 'Отменить полет дрона?',
+                            confirmText: 'Отменить',
+                            confirmColor: Colors.orange,
+                            icon: Icons.cancel,
+                            onConfirm: () async {
+                              try {
+                                await FlightApi.droneCancelFlight();
+                                setState(() => isFlightStarted = false);
+                              } catch (e) {
+                              }
+                            },
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -633,10 +631,6 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                           try {
                             await FlightApi.droneLand();
                           } catch (e) {
-                            Get.snackbar(
-                                'Ошибка', 'Не удалось выполнить посадку',
-                                backgroundColor: Colors.red,
-                                colorText: Colors.white);
                           } finally {
                             if (mounted) setState(() => isLanding = false);
                           }
@@ -680,10 +674,6 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                           try {
                             await FlightApi.returnToHome();
                           } catch (e) {
-                            Get.snackbar(
-                                'Ошибка', 'Не удалось вернуть дрон на базу',
-                                backgroundColor: Colors.red,
-                                colorText: Colors.white);
                           } finally {
                             if (mounted)
                               setState(() => isReturningHome = false);
@@ -730,10 +720,6 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                             await FlightApi.emergencyStop();
                             setState(() => isFlightStarted = false);
                           } catch (e) {
-                            Get.snackbar(
-                                'Ошибка', 'Не удалось выполнить остановку',
-                                backgroundColor: Colors.red,
-                                colorText: Colors.white);
                           } finally {
                             if (mounted)
                               setState(() => isEmergencyStopping = false);

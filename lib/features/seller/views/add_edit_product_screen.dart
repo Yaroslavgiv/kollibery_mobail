@@ -61,13 +61,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       });
       }
     } catch (e) {
-      Get.snackbar(
-        'Ошибка',
-        'Не удалось выбрать изображение: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
     }
   }
 
@@ -244,13 +237,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   Future<void> _saveProduct() async {
     // Проверяем наличие изображения
     if (_selectedImagePath == null || _selectedImagePath!.isEmpty) {
-      Get.snackbar(
-        'Ошибка',
-        'Пожалуйста, выберите изображение товара',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
       return;
     }
 
@@ -334,13 +320,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           image: image,
         );
         if (success) {
-          Get.snackbar(
-            'Успех',
-            'Товар успешно добавлен',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
-          );
         }
       } else {
         // Редактирование существующего товара
@@ -354,47 +333,18 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           image: image,
         );
         if (success) {
-          Get.snackbar(
-            'Успех',
-            'Товар успешно обновлен',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
-          );
         }
       }
 
       if (success) {
         // Показываем сообщение об успехе
-        Get.snackbar(
-          'Успех',
-          widget.product == null ? 'Товар успешно добавлен' : 'Товар успешно обновлен',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          duration: Duration(seconds: 2),
-        );
         
         // Переходим на главный экран продавца
         // Используем offAllNamed чтобы закрыть все предыдущие экраны
         Get.offAllNamed('/seller-home');
       } else {
-        Get.snackbar(
-          'Ошибка',
-          'Не удалось сохранить товар',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
       }
     } catch (e) {
-      Get.snackbar(
-        'Ошибка',
-        'Ошибка при сохранении товара: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
     } finally {
       setState(() {
         _isLoading = false;

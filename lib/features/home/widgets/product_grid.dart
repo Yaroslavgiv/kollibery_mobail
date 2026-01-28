@@ -120,13 +120,6 @@ class ProductGrid extends StatelessWidget {
                                 final cartController = Get.find<CartController>();
                                 cartController.addToCart(product.toJson());
                               } catch (e) {
-                                Get.snackbar(
-                                  'Ошибка',
-                                  'Не удалось добавить товар в корзину',
-                                  backgroundColor: Colors.red,
-                                  colorText: Colors.white,
-                                  duration: Duration(seconds: 2),
-                                );
                               }
                             },
                           ),

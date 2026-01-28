@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import '../../../common/styles/colors.dart';
 import '../../../common/themes/text_theme.dart';
 import '../../../data/models/order_model.dart';
-import '../../../data/repositories/order_history_repository.dart';
+import '../../../data/repositories/order_repository.dart';
 import '../../../utils/device/screen_util.dart';
 import '../../../utils/helpers/hex_image.dart';
 
@@ -15,7 +15,7 @@ class OrderHistoryScreen extends StatefulWidget {
 }
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
-  final OrderHistoryRepository _historyRepository = OrderHistoryRepository();
+  final OrderRepository _orderRepository = OrderRepository();
   late List<OrderModel> _historyOrders;
 
   @override
@@ -24,10 +24,32 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     _loadHistory();
   }
 
-  void _loadHistory() {
-    setState(() {
-      _historyOrders = _historyRepository.getOrderHistory();
-    });
+  Future<void> _loadHistory() async {
+    try {
+      // Пробуем взять историю с сервера (последние 5 заказов)
+      final serverHistory = await _orderRepository.fetchLastFiveOrdersAsModels();
+      final uniqueHistory = _dedupeById(serverHistory);
+      setState(() {
+        _historyOrders = uniqueHistory;
+      });
+    } catch (e) {
+      print('⚠️ Не удалось получить историю с сервера: $e');
+      setState(() {
+        _historyOrders = [];
+      });
+    }
+  }
+
+  List<OrderModel> _dedupeById(List<OrderModel> orders) {
+    final seenIds = <int>{};
+    final result = <OrderModel>[];
+    for (final order in orders) {
+      final id = order.id;
+      if (seenIds.add(id)) {
+        result.add(order);
+      }
+    }
+    return result;
   }
 
   String _getStatusText(String status) {
@@ -62,6 +84,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   }
 
   void _showOrderDetails(BuildContext context, OrderModel order) {
+    // Алерт-диалоги отключены по требованию
+    return;
+    /*
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -184,9 +209,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         ],
       ),
     );
+    */
   }
 
   Future<void> _clearHistory() async {
+    // Алерт-диалоги и всплывающие подсказки отключены по требованию
+    return;
     final confirmed = await Get.dialog<bool>(
       AlertDialog(
         backgroundColor: Colors.white,
@@ -219,15 +247,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     );
 
     if (confirmed == true) {
-      await _historyRepository.clearHistory();
-      _loadHistory();
-      Get.snackbar(
-        'Успех',
-        'История заказов очищена',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
     }
   }
 

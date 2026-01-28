@@ -48,7 +48,6 @@ class OrdersController extends GetxController {
           '✅ Загружено ${ordersList.length} заказов с полной информацией о товарах');
     } catch (e) {
       print('❌ Ошибка загрузки заказов с информацией о товарах: $e');
-      Get.snackbar('Ошибка', 'Не удалось загрузить заказы: $e');
     } finally {
       isLoading.value = false;
     }
@@ -61,7 +60,6 @@ class OrdersController extends GetxController {
       final ordersList = await _orderRepository.fetchSellerOrdersAsModels();
       sellerOrders.value = ordersList;
     } catch (e) {
-      Get.snackbar('Ошибка', 'Не удалось загрузить заказы продавца: $e');
     } finally {
       isLoading.value = false;
     }
@@ -74,7 +72,6 @@ class OrdersController extends GetxController {
       final ordersList = await _orderRepository.fetchTechOrdersAsModels();
       techOrders.value = ordersList;
     } catch (e) {
-      Get.snackbar('Ошибка', 'Не удалось загрузить заказы техника: $e');
     } finally {
       isLoading.value = false;
     }

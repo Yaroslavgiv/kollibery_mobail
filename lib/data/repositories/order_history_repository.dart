@@ -5,27 +5,13 @@ import '../models/order_model.dart';
 class OrderHistoryRepository {
   static const String _historyKey = 'seller_order_history';
   final KLocalStorage _localStorage = KLocalStorage();
-  static const int _maxHistorySize = 5; // Максимум 5 последних заказов
 
   /// Сохранение заказа в историю
   Future<void> saveOrderToHistory(OrderModel order) async {
     try {
-      // Получаем текущую историю
-      final history = getOrderHistory();
-      
-      // Добавляем новый заказ в начало списка
-      history.insert(0, order);
-      
-      // Ограничиваем размер истории до 5 заказов
-      if (history.length > _maxHistorySize) {
-        history.removeRange(_maxHistorySize, history.length);
-      }
-      
-      // Сохраняем обновленную историю
-      final historyJson = history.map((order) => order.toJson()).toList();
-      await _localStorage.saveData(_historyKey, historyJson);
-      
-      print('✅ Заказ ${order.id} сохранен в историю. Всего в истории: ${history.length}');
+      // Локальное сохранение истории отключено по требованию.
+      // История берется с сервера через /order/getlastfiveorders.
+      print('ℹ️ Локальное сохранение истории отключено для заказа ${order.id}');
     } catch (e) {
       print('❌ Ошибка при сохранении заказа в историю: $e');
     }

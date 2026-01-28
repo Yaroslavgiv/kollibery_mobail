@@ -160,7 +160,6 @@ class TechDeliveryStatusController extends GetxController {
       final fetchedOrders = await _orderRepository.fetchTechOrdersAsModels();
       orders.value = fetchedOrders;
     } catch (e) {
-      Get.snackbar('Ошибка', 'Не удалось загрузить заказы: $e');
     } finally {
       isLoading.value = false;
     }
@@ -176,7 +175,6 @@ class TechDeliveryStatusController extends GetxController {
       print('Обновление статуса заказа $orderId на $status');
       await fetchTechOrders(); // Обновляем список
     } catch (e) {
-      Get.snackbar('Ошибка', 'Не удалось обновить статус: $e');
     }
   }
 
