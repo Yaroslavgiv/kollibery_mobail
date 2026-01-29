@@ -344,13 +344,14 @@ class _OrderListScreenState extends State<OrderListScreen>
     );
   }
 
-  /// Форматирование даты с временем
+  /// Форматирование даты с временем. Время с сервера на 3 часа меньше московского — прибавляем 3 часа при отображении.
   String _formatDate(DateTime date) {
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final year = date.year;
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
+    final moscow = date.add(const Duration(hours: 3));
+    final day = moscow.day.toString().padLeft(2, '0');
+    final month = moscow.month.toString().padLeft(2, '0');
+    final year = moscow.year;
+    final hour = moscow.hour.toString().padLeft(2, '0');
+    final minute = moscow.minute.toString().padLeft(2, '0');
     return '$day.$month.$year $hour:$minute';
   }
 

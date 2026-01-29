@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import '../../../common/styles/colors.dart';
 import '../../../common/themes/text_theme.dart';
 import '../../../data/models/order_model.dart';
@@ -16,7 +15,8 @@ class OrderHistoryScreen extends StatefulWidget {
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   final OrderRepository _orderRepository = OrderRepository();
-  late List<OrderModel> _historyOrders;
+  List<OrderModel> _historyOrders = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -25,18 +25,28 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   }
 
   Future<void> _loadHistory() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
     try {
-      // Пробуем взять историю с сервера (последние 5 заказов)
-      final serverHistory = await _orderRepository.fetchLastFiveOrdersAsModels();
+      final serverHistory =
+          await _orderRepository.fetchLastFiveOrdersAsModels();
       final uniqueHistory = _dedupeById(serverHistory);
-      setState(() {
-        _historyOrders = uniqueHistory;
-      });
+      uniqueHistory.sort((a, b) => (b.createdAt ?? DateTime(1970))
+          .compareTo(a.createdAt ?? DateTime(1970)));
+      if (mounted) {
+        setState(() {
+          _historyOrders = uniqueHistory;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       print('⚠️ Не удалось получить историю с сервера: $e');
-      setState(() {
-        _historyOrders = [];
-      });
+      if (mounted) {
+        setState(() {
+          _historyOrders = [];
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -73,13 +83,15 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     }
   }
 
+  /// Время с сервера на 3 часа меньше московского — прибавляем 3 часа при отображении.
   String _formatDate(DateTime? date) {
     if (date == null) return 'Дата не указана';
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final year = date.year;
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
+    final moscow = date.add(const Duration(hours: 3));
+    final day = moscow.day.toString().padLeft(2, '0');
+    final month = moscow.month.toString().padLeft(2, '0');
+    final year = moscow.year;
+    final hour = moscow.hour.toString().padLeft(2, '0');
+    final minute = moscow.minute.toString().padLeft(2, '0');
     return '$day.$month.$year $hour:$minute';
   }
 
@@ -214,44 +226,29 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
   Future<void> _clearHistory() async {
     // Алерт-диалоги и всплывающие подсказки отключены по требованию
-    return;
-    final confirmed = await Get.dialog<bool>(
-      AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text(
-          'Очистить историю',
-          style: TextStyle(color: Colors.black),
-        ),
-        content: Text(
-          'Вы уверены, что хотите очистить всю историю заказов?',
-          style: TextStyle(color: Colors.black),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(result: false),
-            child: Text(
-              'Отмена',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Get.back(result: true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: Text('Очистить'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading && _historyOrders.isEmpty) {
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text(
+                  'Загрузка истории заказов...',
+                  style: TextStyle(color: KColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -355,12 +352,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                           ),
                                           Text(
                                             'Цена: ${order.price.toStringAsFixed(2)} ₽',
-                                            style: TextStyle(
-                                              color: KColors.textDark,
-                                            ),
-                                          ),
-                                          Text(
-                                            'Покупатель: ${order.buyerName.isNotEmpty ? order.buyerName : 'Не указан'}',
                                             style: TextStyle(
                                               color: KColors.textDark,
                                             ),

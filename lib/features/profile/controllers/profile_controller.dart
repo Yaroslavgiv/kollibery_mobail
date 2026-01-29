@@ -191,11 +191,18 @@ class ProfileController extends GetxController {
       }
     }
 
+    // Телефон из /account/user (не затираем локальный, если сервер вернул null)
+    final serverPhone = data['phoneNumber']?.toString().trim();
+    if (serverPhone != null && serverPhone.isNotEmpty) {
+      phone.value = serverPhone;
+    }
+
     saveProfileData();
 
     print('✅ Имя обновлено из /account/user:');
     print('   - firstName: ${firstName.value}');
     print('   - lastName: ${lastName.value}');
+    print('   - phone: ${phone.value}');
   }
 
   String? _extractFullName(Map<String, dynamic> data) {

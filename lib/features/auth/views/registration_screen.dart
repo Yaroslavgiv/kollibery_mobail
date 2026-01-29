@@ -98,6 +98,14 @@ class RegistrationScreen extends StatelessWidget {
                     ),
                     SizedBox(height: ScreenUtil.adaptiveHeight(16)),
 
+                    // Телефон
+                    CustomTextField(
+                      hintText: 'Телефон',
+                      controller: authController.phoneController,
+                      prefixIcon: Icons.phone,
+                    ),
+                    SizedBox(height: ScreenUtil.adaptiveHeight(16)),
+
                     // Пароль
                     CustomTextField(
                       hintText: 'Пароль',

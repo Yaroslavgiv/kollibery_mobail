@@ -9,6 +9,7 @@ class AuthController extends GetxController {
   final firstNameController = TextEditingController();
   final lastNameController = TextEditingController();
   final emailController = TextEditingController();
+  final phoneController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
   final roleController = TextEditingController(); // 'buyer' или 'seller'
@@ -52,21 +53,22 @@ class AuthController extends GetxController {
       return;
     }
 
+    final phone = phoneController.text.trim();
+
     try {
       await _authRepository.register(
-          firstName, lastName, email, password, confirmPassword, role);
+          firstName, lastName, email, password, confirmPassword, role, phone);
 
       // Сохраняем данные профиля в локальное хранилище
-      // Это гарантирует, что данные будут доступны даже если сервер не вернет их при автологине
       box.write('userProfile', {
         'firstName': firstName,
         'lastName': lastName,
         'email': email,
-        'phone': '', // Телефон можно добавить позже при редактировании профиля
-        'deliveryPoint': '', // Точка доставки устанавливается позже
-        'profileImage': '', // Фото профиля загружается позже
+        'phone': phone,
+        'deliveryPoint': '',
+        'profileImage': '',
       });
-      
+
       // Отладочная информация для проверки сохранения
       print('✅ Данные профиля сохранены при регистрации:');
       print('   - firstName: $firstName');
@@ -82,8 +84,7 @@ class AuthController extends GetxController {
   }
 
   /// Автоматический вход после регистрации
-  Future<void> autoLoginAfterRegistration(
-      String email, String password) async {
+  Future<void> autoLoginAfterRegistration(String email, String password) async {
     try {
       final userData = await _authRepository.login(email, password);
 
@@ -108,7 +109,8 @@ class AuthController extends GetxController {
         print('   - Проверяем другие возможные ключи...');
         // Пробуем найти userId в других возможных ключах
         for (var key in userData.keys) {
-          if (key.toLowerCase().contains('user') || key.toLowerCase().contains('id')) {
+          if (key.toLowerCase().contains('user') ||
+              key.toLowerCase().contains('id')) {
             print('   - Найден ключ $key: ${userData[key]}');
           }
         }
@@ -132,19 +134,30 @@ class AuthController extends GetxController {
 
       // Обновляем данные профиля, если сервер их возвращает
       // Важно: сохраняем данные из регистрации, если сервер их не вернул
-      final existingProfile = box.read<Map<String, dynamic>>('userProfile') ?? {};
-      
+      final existingProfile =
+          box.read<Map<String, dynamic>>('userProfile') ?? {};
+
       // Получаем данные из ответа сервера или используем существующие данные из регистрации
       final serverFirstName = userData['firstName']?.toString().trim();
       final serverLastName = userData['lastName']?.toString().trim();
-      
+
       box.write('userProfile', {
-        'firstName': serverFirstName ?? existingProfile['firstName']?.toString().trim() ?? '',
-        'lastName': serverLastName ?? existingProfile['lastName']?.toString().trim() ?? '',
+        'firstName': serverFirstName ??
+            existingProfile['firstName']?.toString().trim() ??
+            '',
+        'lastName': serverLastName ??
+            existingProfile['lastName']?.toString().trim() ??
+            '',
         'email': userData['email']?.toString().trim() ?? email,
-        'phone': userData['phone']?.toString().trim() ?? existingProfile['phone']?.toString().trim() ?? '',
-        'deliveryPoint': userData['deliveryPoint']?.toString().trim() ?? existingProfile['deliveryPoint']?.toString().trim() ?? '',
-        'profileImage': userData['profileImage']?.toString().trim() ?? existingProfile['profileImage']?.toString().trim() ?? '',
+        'phone': userData['phone']?.toString().trim() ??
+            existingProfile['phone']?.toString().trim() ??
+            '',
+        'deliveryPoint': userData['deliveryPoint']?.toString().trim() ??
+            existingProfile['deliveryPoint']?.toString().trim() ??
+            '',
+        'profileImage': userData['profileImage']?.toString().trim() ??
+            existingProfile['profileImage']?.toString().trim() ??
+            '',
       });
 
       // Дополнительно подтягиваем имя из /account/user (или /account/username)
@@ -154,12 +167,15 @@ class AuthController extends GetxController {
         // Не прерываем автологин, если эндпоинт недоступен
         print('Не удалось получить имя с сервера: $e');
       }
-      
+
       // Убеждаемся, что данные профиля сохранены
       print('✅ Данные профиля сохранены после автологина:');
-      print('   - firstName: ${box.read<Map<String, dynamic>>('userProfile')?['firstName']}');
-      print('   - lastName: ${box.read<Map<String, dynamic>>('userProfile')?['lastName']}');
-      print('   - email: ${box.read<Map<String, dynamic>>('userProfile')?['email']}');
+      print(
+          '   - firstName: ${box.read<Map<String, dynamic>>('userProfile')?['firstName']}');
+      print(
+          '   - lastName: ${box.read<Map<String, dynamic>>('userProfile')?['lastName']}');
+      print(
+          '   - email: ${box.read<Map<String, dynamic>>('userProfile')?['email']}');
 
       // Перенаправляем согласно роли из токена
       final roleFromToken = box.read('role');
@@ -216,7 +232,8 @@ class AuthController extends GetxController {
         print('   - Проверяем другие возможные ключи...');
         // Пробуем найти userId в других возможных ключах
         for (var key in userData.keys) {
-          if (key.toLowerCase().contains('user') || key.toLowerCase().contains('id')) {
+          if (key.toLowerCase().contains('user') ||
+              key.toLowerCase().contains('id')) {
             print('   - Найден ключ $key: ${userData[key]}');
           }
         }
@@ -242,14 +259,25 @@ class AuthController extends GetxController {
 
       // Сохраняем или обновляем данные профиля из ответа сервера
       // Важно: сохраняем существующие данные, если сервер их не вернул
-      final existingProfile = box.read<Map<String, dynamic>>('userProfile') ?? {};
+      final existingProfile =
+          box.read<Map<String, dynamic>>('userProfile') ?? {};
       box.write('userProfile', {
-        'firstName': userData['firstName']?.toString().trim() ?? existingProfile['firstName']?.toString().trim() ?? '',
-        'lastName': userData['lastName']?.toString().trim() ?? existingProfile['lastName']?.toString().trim() ?? '',
+        'firstName': userData['firstName']?.toString().trim() ??
+            existingProfile['firstName']?.toString().trim() ??
+            '',
+        'lastName': userData['lastName']?.toString().trim() ??
+            existingProfile['lastName']?.toString().trim() ??
+            '',
         'email': userData['email']?.toString().trim() ?? email,
-        'phone': userData['phone']?.toString().trim() ?? existingProfile['phone']?.toString().trim() ?? '',
-        'deliveryPoint': userData['deliveryPoint']?.toString().trim() ?? existingProfile['deliveryPoint']?.toString().trim() ?? '',
-        'profileImage': userData['profileImage']?.toString().trim() ?? existingProfile['profileImage']?.toString().trim() ?? '',
+        'phone': userData['phone']?.toString().trim() ??
+            existingProfile['phone']?.toString().trim() ??
+            '',
+        'deliveryPoint': userData['deliveryPoint']?.toString().trim() ??
+            existingProfile['deliveryPoint']?.toString().trim() ??
+            '',
+        'profileImage': userData['profileImage']?.toString().trim() ??
+            existingProfile['profileImage']?.toString().trim() ??
+            '',
       });
 
       // Дополнительно подтягиваем имя из /account/user (или /account/username)
@@ -259,12 +287,15 @@ class AuthController extends GetxController {
         // Не прерываем логин, если эндпоинт недоступен
         print('Не удалось получить имя с сервера: $e');
       }
-      
+
       // Отладочная информация для проверки сохранения
       print('✅ Данные профиля сохранены после логина:');
-      print('   - firstName: ${box.read<Map<String, dynamic>>('userProfile')?['firstName']}');
-      print('   - lastName: ${box.read<Map<String, dynamic>>('userProfile')?['lastName']}');
-      print('   - email: ${box.read<Map<String, dynamic>>('userProfile')?['email']}');
+      print(
+          '   - firstName: ${box.read<Map<String, dynamic>>('userProfile')?['firstName']}');
+      print(
+          '   - lastName: ${box.read<Map<String, dynamic>>('userProfile')?['lastName']}');
+      print(
+          '   - email: ${box.read<Map<String, dynamic>>('userProfile')?['email']}');
 
       // Перенаправляем согласно роли из токена
       final userRole = box.read('role');
@@ -413,9 +444,9 @@ class AuthController extends GetxController {
     }
 
     final value = userId ?? '';
-    print('⚠️ userId отсутствует или не GUID ($value), вызываем /account/username');
-    final accountUser =
-        await _authRepository.getAccountUserByUsername(email);
+    print(
+        '⚠️ userId отсутствует или не GUID ($value), вызываем /account/username');
+    final accountUser = await _authRepository.getAccountUserByUsername(email);
     if (accountUser.isNotEmpty) {
       _mergeProfileNameFromAccountUser(accountUser, email);
       _saveUserIdIfGuid(accountUser['userId'] ?? accountUser['id']);
@@ -438,8 +469,8 @@ class AuthController extends GetxController {
     final existingProfile = box.read<Map<String, dynamic>>('userProfile') ?? {};
     final rawName = _extractFullName(data);
     final rawFirstName = _extractString(data, ['firstName', 'givenName']);
-    final rawLastName = _extractString(
-        data, ['lastName', 'surname', 'surName', 'familyName']);
+    final rawLastName =
+        _extractString(data, ['lastName', 'surname', 'surName', 'familyName']);
 
     String firstName = existingProfile['firstName']?.toString().trim() ?? '';
     String lastName = existingProfile['lastName']?.toString().trim() ?? '';
@@ -465,7 +496,8 @@ class AuthController extends GetxController {
       'lastName': lastName,
       'email': existingProfile['email']?.toString().trim() ?? fallbackEmail,
       'phone': existingProfile['phone']?.toString().trim() ?? '',
-      'deliveryPoint': existingProfile['deliveryPoint']?.toString().trim() ?? '',
+      'deliveryPoint':
+          existingProfile['deliveryPoint']?.toString().trim() ?? '',
       'profileImage': existingProfile['profileImage']?.toString().trim() ?? '',
     });
   }

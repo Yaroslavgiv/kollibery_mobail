@@ -12,6 +12,7 @@ import '../../home/models/product_model.dart';
 import '../widgets/seller_product_card.dart';
 import 'order_history_screen.dart';
 import '../../../common/styles/colors.dart';
+import '../../../common/themes/text_theme.dart';
 import '../../../utils/device/screen_util.dart';
 import '../../../utils/helpers/hex_image.dart';
 import '../../../features/auth/controllers/auth_controller.dart';
@@ -110,70 +111,74 @@ class _SellerMainScreenState extends State<SellerMainScreen> {
           padding: EdgeInsets.zero,
           children: [
             Obx(() {
-              // Обновляем данные профиля при открытии drawer
-              return DrawerHeader(
+              return Container(
                 decoration: BoxDecoration(
                   color: KColors.primary,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: Colors.white,
-                      backgroundImage:
-                          profileController.profileImage.value.isEmpty
+                child: InkWell(
+                  onTap: () {
+                    Navigator.pop(context);
+                    Get.toNamed(AppRoutes.profile);
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      top: ScreenUtil.adaptiveHeight(50),
+                      right: ScreenUtil.adaptiveHeight(30),
+                      left: ScreenUtil.adaptiveWidth(20),
+                      bottom: ScreenUtil.adaptiveHeight(20),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          radius: 40,
+                          backgroundColor: KColors.backgroundLight,
+                          backgroundImage: profileController
+                                  .profileImage.value.isEmpty
                               ? null
                               : FileImage(
                                   File(profileController.profileImage.value)),
-                      child: profileController.profileImage.value.isEmpty
-                          ? Icon(Icons.person, size: 40, color: KColors.primary)
-                          : null,
+                          child: profileController.profileImage.value.isEmpty
+                              ? Icon(Icons.person,
+                                  size: 40, color: KColors.primary)
+                              : null,
+                        ),
+                        SizedBox(height: ScreenUtil.adaptiveHeight(10)),
+                        Text(
+                          (profileController.firstName.value.isNotEmpty ||
+                                  profileController.lastName.value.isNotEmpty)
+                              ? '${profileController.firstName.value} ${profileController.lastName.value}'
+                                  .trim()
+                              : (profileController.email.value.isNotEmpty
+                                  ? profileController.email.value.split('@')[0]
+                                  : 'Пользователь'),
+                          style: KTextTheme.lightTextTheme.displaySmall,
+                        ),
+                        SizedBox(height: ScreenUtil.adaptiveHeight(5)),
+                        Text(
+                          profileController.email.value.isNotEmpty
+                              ? profileController.email.value
+                              : (box.read('email') ?? ''),
+                          style: KTextTheme.darkTextTheme.labelLarge,
+                        ),
+                        SizedBox(height: ScreenUtil.adaptiveHeight(5)),
+                        Row(
+                          children: [
+                            Icon(Icons.phone,
+                                color: KColors.textPrimary, size: 16),
+                            SizedBox(width: ScreenUtil.adaptiveWidth(5)),
+                            Text(
+                              profileController.phone.value,
+                              style: KTextTheme.darkTextTheme.labelLarge,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    SizedBox(height: 10),
-                    // Имя и фамилия
-                    Text(
-                      (profileController.firstName.value.isNotEmpty ||
-                              profileController.lastName.value.isNotEmpty)
-                          ? '${profileController.firstName.value} ${profileController.lastName.value}'
-                              .trim()
-                          : (profileController.email.value.isNotEmpty
-                              ? profileController.email.value.split('@')[0]
-                              : 'Пользователь'),
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 5),
-                    // Email
-                    Text(
-                      profileController.email.value.isNotEmpty
-                          ? profileController.email.value
-                          : (box.read('email') ?? ''),
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               );
             }),
-            ListTile(
-              leading: Icon(Icons.person),
-              title: Text('Профиль'),
-              onTap: () {
-                Navigator.pop(context);
-                Get.toNamed(AppRoutes.profile);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.red),
-              title: Text('Выйти', style: TextStyle(color: Colors.red)),
-              onTap: _showLogoutDialog,
-            ),
           ],
         ),
       ),
@@ -431,7 +436,11 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _future = orderRepository.fetchSellerOrdersAsModels();
+    _future = orderRepository.fetchSellerOrdersAsModels().then((orders) {
+      orders.sort((a, b) => (b.createdAt ?? DateTime(1970))
+          .compareTo(a.createdAt ?? DateTime(1970)));
+      return orders;
+    });
   }
 
   @override
@@ -458,11 +467,25 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen>
     }
   }
 
+  /// Время с сервера на 3 часа меньше московского — прибавляем 3 часа при отображении.
+  String _formatOrderDate(DateTime? date) {
+    if (date == null) return 'Дата не указана';
+    final moscow = date.add(const Duration(hours: 3));
+    final d = moscow.day.toString().padLeft(2, '0');
+    final m = moscow.month.toString().padLeft(2, '0');
+    final y = moscow.year;
+    final h = moscow.hour.toString().padLeft(2, '0');
+    final min = moscow.minute.toString().padLeft(2, '0');
+    return '$d.$m.$y $h:$min';
+  }
+
   Future<void> _refresh() async {
     print('🔄 Обновление списка заказов продавца...');
     setState(() {
       _future = orderRepository.fetchSellerOrdersAsModels().then((orders) {
         print('✅ Загружено ${orders.length} заказов для продавца');
+        orders.sort((a, b) => (b.createdAt ?? DateTime(1970))
+            .compareTo(a.createdAt ?? DateTime(1970)));
         if (orders.isEmpty) {
           print('⚠️ ВНИМАНИЕ: Список заказов пуст!');
           print('   Проверьте:');
@@ -555,7 +578,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen>
                                 Text(
                                     'Цена: ${order.price.toStringAsFixed(2)} ₽'),
                                 Text(
-                                    'Покупатель: ${order.buyerName.isNotEmpty ? order.buyerName : 'Не указан'}'),
+                                    'Дата: ${_formatOrderDate(order.createdAt ?? order.updatedAt)}'),
                               ],
                             ),
                             isThreeLine: true,
