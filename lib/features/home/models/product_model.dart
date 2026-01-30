@@ -28,7 +28,11 @@ class ProductModel {
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     print('Парсинг ProductModel из JSON: $json');
 
-    final id = json['id'] ?? 0;
+    // API может вернуть id как int или String — документация: integer($int32)
+    final rawId = json['id'];
+    final id = rawId is int
+        ? rawId
+        : (rawId != null ? (int.tryParse(rawId.toString()) ?? 0) : 0);
     final createdAt = json['createdAt'] ?? '';
     final updatedAt = json['updatedAt'] ?? '';
     final isDeleted = json['isDeleted'] ?? false;

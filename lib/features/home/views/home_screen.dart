@@ -233,20 +233,64 @@ class HomePage extends StatelessWidget {
                         ),
                       );
                     } else {
-                      print('Отображение ${snapshot.data!.length} товаров');
-                      // Преобразуем ProductModel в Map для ProductGrid
-                      final products = snapshot.data!
-                          .map((p) => {
-                                'id': p.id,
-                                'name': p.name,
-                                'description': p.description,
-                                'price': p.price,
-                                'image': p.image,
-                                'category': p.category,
-                                'quantityInStock': p.quantityInStock,
-                              })
-                          .toList();
-                      return ProductGrid(products: products);
+                      try {
+                        print('Отображение ${snapshot.data!.length} товаров');
+                        // Преобразуем ProductModel в Map для ProductGrid
+                        final products = snapshot.data!
+                            .map((p) {
+                              try {
+                                return {
+                                  'id': p.id,
+                                  'name': p.name,
+                                  'description': p.description,
+                                  'price': p.price,
+                                  'image': p.image,
+                                  'category': p.category,
+                                  'quantityInStock': p.quantityInStock,
+                                  'userId': p.userId,
+                                  'createdAt': p.createdAt,
+                                  'updatedAt': p.updatedAt,
+                                  'isDeleted': p.isDeleted,
+                                };
+                              } catch (e) {
+                                print('❌ Ошибка при преобразовании товара ${p.id}: $e');
+                                return null;
+                              }
+                            })
+                            .where((p) => p != null)
+                            .cast<Map<String, dynamic>>()
+                            .toList();
+                        
+                        if (products.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.error, size: 48, color: Colors.red),
+                                SizedBox(height: 16),
+                                Text('Ошибка при обработке товаров'),
+                              ],
+                            ),
+                          );
+                        }
+                        
+                        return ProductGrid(products: products);
+                      } catch (e, stackTrace) {
+                        print('❌ Ошибка при отображении товаров: $e');
+                        print('Stack trace: $stackTrace');
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error, size: 48, color: Colors.red),
+                              SizedBox(height: 16),
+                              Text('Ошибка при отображении товаров'),
+                              SizedBox(height: 8),
+                              Text('$e', style: TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                        );
+                      }
                     }
                   },
                 ),

@@ -56,9 +56,32 @@ class SellerProductCard extends StatelessWidget {
         final success = await repository.deleteProduct(product.id);
         if (success) {
           onDeleted?.call();
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Товар удалён')),
+            );
+          }
         } else {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Не удалось удалить товар'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e is Exception
+                  ? e.toString().replaceFirst('Exception: ', '')
+                  : 'Ошибка удаления'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -70,7 +93,7 @@ class SellerProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     ImageProvider? imageProvider = HexImage.resolveImageProvider(product.image);
-    
+
     if (imageProvider == null) {
       imageProvider = const AssetImage('assets/logos/Logo_black.png');
     }
@@ -90,84 +113,85 @@ class SellerProductCard extends StatelessWidget {
           ],
         ),
         child: Column(
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                color: Colors.white, // Фон для изображения
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                child: Image(
-                  image: imageProvider,
-                  fit: BoxFit.contain, // Показываем изображение полностью
-                  errorBuilder: (context, error, stackTrace) {
-                    print('❌ Ошибка загрузки изображения: $error');
-                    return Container(
-                      color: Colors.grey[200],
-                      child: Icon(Icons.image_not_supported, color: Colors.grey[400]),
-                    );
-                  },
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Center(
-                      child: CircularProgressIndicator(
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
-                            : null,
-                      ),
-                    );
-                  },
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  color: Colors.white, // Фон для изображения
                 ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(ScreenUtil.adaptiveWidth(8)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product.name,
-                  style: TAppTheme.lightTheme.textTheme.labelMedium?.copyWith(
-                    color: KColors.textDark,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  child: Image(
+                    image: imageProvider,
+                    fit: BoxFit.contain, // Показываем изображение полностью
+                    errorBuilder: (context, error, stackTrace) {
+                      print('❌ Ошибка загрузки изображения: $error');
+                      return Container(
+                        color: Colors.grey[200],
+                        child: Icon(Icons.image_not_supported,
+                            color: Colors.grey[400]),
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                        ),
+                      );
+                    },
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                SizedBox(height: 4),
-                Text(
-                  "${product.price} ₽",
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: Colors.blue),
-                ),
-                SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        _deleteProduct(context);
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(8),
-                        child: Icon(Icons.delete, color: Colors.red, size: 20),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
-      ),
+            Padding(
+              padding: EdgeInsets.all(ScreenUtil.adaptiveWidth(8)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    style: TAppTheme.lightTheme.textTheme.labelMedium?.copyWith(
+                      color: KColors.textDark,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    "${product.price} ₽",
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: Colors.blue),
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          _deleteProduct(context);
+                        },
+                        child: Container(
+                          padding: EdgeInsets.all(8),
+                          child:
+                              Icon(Icons.delete, color: Colors.red, size: 20),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
-

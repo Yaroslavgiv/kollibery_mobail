@@ -38,10 +38,11 @@ class ProductApi {
       } else {
         print('❌ Ошибка загрузки товаров: ${response.statusCode}');
         print('Response: ${response.body}');
-        
+
         String errorMessage = 'Ошибка загрузки товаров';
         if (response.statusCode == 401) {
-          errorMessage = 'Ошибка авторизации. Пожалуйста, войдите в систему заново.';
+          errorMessage =
+              'Ошибка авторизации. Пожалуйста, войдите в систему заново.';
         } else if (response.statusCode == 403) {
           errorMessage = 'Доступ запрещен. Проверьте права доступа.';
         } else if (response.statusCode == 404) {
@@ -53,10 +54,11 @@ class ProductApi {
               errorMessage = 'Ошибка загрузки товаров: ${errorData['message']}';
             }
           } catch (e) {
-            errorMessage = 'Ошибка загрузки товаров (код: ${response.statusCode})';
+            errorMessage =
+                'Ошибка загрузки товаров (код: ${response.statusCode})';
           }
         }
-        
+
         throw Exception(errorMessage);
       }
     } catch (e) {
@@ -92,21 +94,22 @@ class ProductApi {
   /// Получить userId из хранилища
   static String? _getUserId() {
     final userId = _storage.read('userId');
-    print('🔍 Проверка userId в хранилище: $userId (тип: ${userId.runtimeType})');
-    
+    print(
+        '🔍 Проверка userId в хранилище: $userId (тип: ${userId.runtimeType})');
+
     if (userId != null) {
       final userIdString = userId.toString();
       print('✅ userId найден: $userIdString');
       return userIdString;
     }
-    
+
     print('❌ userId не найден в хранилище');
     print('📋 Содержимое хранилища:');
     print('   - loggedIn: ${_storage.read('loggedIn')}');
     print('   - token: ${_storage.read('token') != null ? "есть" : "нет"}');
     print('   - email: ${_storage.read('email')}');
     print('   - role: ${_storage.read('role')}');
-    
+
     return null;
   }
 
@@ -129,37 +132,40 @@ class ProductApi {
       final token = _storage.read('token');
       final loggedIn = _storage.read('loggedIn') ?? false;
       var userId = _getUserId();
-      
+
       // Проверяем авторизацию
       print('🔐 Проверка авторизации:');
       print('   - loggedIn: $loggedIn');
       print('   - token: ${token != null ? "есть" : "нет"}');
       print('   - userId: $userId');
-      
+
       if (!loggedIn || token == null) {
         print('❌ Пользователь не авторизован');
-        throw Exception('Пользователь не авторизован. Пожалуйста, войдите в систему.');
+        throw Exception(
+            'Пользователь не авторизован. Пожалуйста, войдите в систему.');
       }
-      
+
       if (userId == null) {
         print('❌ userId не найден, но пользователь авторизован');
         print('💡 Попытка получить userId из токена...');
-        
+
         // Пробуем получить userId из токена (если это JWT)
         try {
           print('🔑 Анализ токена:');
           print('   - Длина токена: ${token.length}');
-          print('   - Первые 50 символов: ${token.substring(0, token.length > 50 ? 50 : token.length)}...');
-          
+          print(
+              '   - Первые 50 символов: ${token.substring(0, token.length > 50 ? 50 : token.length)}...');
+
           final parts = token.split('.');
           print('   - Количество частей после split(.): ${parts.length}');
-          
+
           if (parts.length == 3) {
             print('   - Это JWT токен, декодируем payload...');
             // Это JWT токен, пробуем декодировать payload
             final payload = parts[1];
-            print('   - Payload (первые 50 символов): ${payload.substring(0, payload.length > 50 ? 50 : payload.length)}...');
-            
+            print(
+                '   - Payload (первые 50 символов): ${payload.substring(0, payload.length > 50 ? 50 : payload.length)}...');
+
             // Добавляем padding если нужно
             String normalizedPayload = payload;
             switch (payload.length % 4) {
@@ -173,15 +179,15 @@ class ProductApi {
                 normalizedPayload += '=';
                 break;
             }
-            
+
             try {
               final decoded = utf8.decode(base64Url.decode(normalizedPayload));
               print('   - Payload декодирован успешно');
               print('   - Декодированный payload: $decoded');
-              
+
               final payloadMap = jsonDecode(decoded) as Map<String, dynamic>;
               print('   - Ключи в payload: ${payloadMap.keys.toList()}');
-              
+
               if (payloadMap['userId'] != null) {
                 userId = payloadMap['userId'].toString();
                 print('✅ userId получен из токена: $userId');
@@ -203,13 +209,16 @@ class ProductApi {
               } else if (payloadMap['nameid'] != null) {
                 // Используем nameid (email) только локально
                 userId = payloadMap['nameid'].toString();
-                print('✅ Используем nameid (email) из токена как userId: $userId');
+                print(
+                    '✅ Используем nameid (email) из токена как userId: $userId');
               } else if (payloadMap['unique_name'] != null) {
                 // Используем unique_name (email) только локально
                 userId = payloadMap['unique_name'].toString();
-                print('✅ Используем unique_name (email) из токена как userId: $userId');
+                print(
+                    '✅ Используем unique_name (email) из токена как userId: $userId');
               } else {
-                print('⚠️ userId, sub, id, nameid и unique_name не найдены в payload токена');
+                print(
+                    '⚠️ userId, sub, id, nameid и unique_name не найдены в payload токена');
               }
             } catch (decodeError) {
               print('❌ Ошибка декодирования base64: $decodeError');
@@ -221,7 +230,7 @@ class ProductApi {
           print('❌ Не удалось декодировать токен: $e');
           print('   Stack trace: ${StackTrace.current}');
         }
-        
+
         // Если userId все еще не найден, используем email как идентификатор
         if (userId == null) {
           print('💡 userId не найден, используем email как идентификатор...');
@@ -254,15 +263,18 @@ class ProductApi {
         'category': category,
         'image': image,
       };
-      
+
       // Если userId является UUID (не email), добавляем его
       // UUID имеет формат: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-      final uuidPattern = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', caseSensitive: false);
+      final uuidPattern = RegExp(
+          r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+          caseSensitive: false);
       if (userId != null && uuidPattern.hasMatch(userId)) {
         requestBody['userId'] = userId;
         print('✅ userId (UUID) добавлен в запрос: $userId');
       } else {
-        print('⚠️ userId не является UUID, сервер должен определить его из токена');
+        print(
+            '⚠️ userId не является UUID, сервер должен определить его из токена');
         print('   - userId: $userId');
       }
 
@@ -293,21 +305,23 @@ class ProductApi {
         print('   - Request URL: $CREATE_PRODUCT_URL');
         print('   - Request Body: ${jsonEncode(requestBody)}');
         print('   - Response: ${response.body}');
-        
+
         // Пробуем распарсить ответ как JSON для более детальной информации
         try {
           final errorData = jsonDecode(response.body);
           print('   - Parsed Error: $errorData');
           if (errorData is Map && errorData.containsKey('message')) {
-            throw Exception('Ошибка добавления товара: ${errorData['message']}');
+            throw Exception(
+                'Ошибка добавления товара: ${errorData['message']}');
           } else if (errorData is Map && errorData.containsKey('error')) {
             throw Exception('Ошибка добавления товара: ${errorData['error']}');
           }
         } catch (e) {
           // Если не удалось распарсить, используем стандартное сообщение
         }
-        
-        throw Exception('Ошибка добавления товара: ${response.statusCode}. Ответ сервера: ${response.body}');
+
+        throw Exception(
+            'Ошибка добавления товара: ${response.statusCode}. Ответ сервера: ${response.body}');
       }
     } catch (e) {
       print('❌ Исключение при добавлении товара: $e');
@@ -329,12 +343,13 @@ class ProductApi {
       final token = _storage.read('token');
       final loggedIn = _storage.read('loggedIn') ?? false;
       var userId = _getUserId();
-      
+
       // Проверяем авторизацию
       if (!loggedIn || token == null) {
-        throw Exception('Пользователь не авторизован. Пожалуйста, войдите в систему.');
+        throw Exception(
+            'Пользователь не авторизован. Пожалуйста, войдите в систему.');
       }
-      
+
       // Если userId не найден, пробуем получить из токена или использовать email
       if (userId == null) {
         // Пробуем получить userId из токена (аналогично addProduct)
@@ -344,13 +359,19 @@ class ProductApi {
             final payload = parts[1];
             String normalizedPayload = payload;
             switch (payload.length % 4) {
-              case 1: normalizedPayload += '==='; break;
-              case 2: normalizedPayload += '=='; break;
-              case 3: normalizedPayload += '='; break;
+              case 1:
+                normalizedPayload += '===';
+                break;
+              case 2:
+                normalizedPayload += '==';
+                break;
+              case 3:
+                normalizedPayload += '=';
+                break;
             }
             final decoded = utf8.decode(base64Url.decode(normalizedPayload));
             final payloadMap = jsonDecode(decoded) as Map<String, dynamic>;
-            
+
             if (payloadMap['nameid'] != null) {
               userId = payloadMap['nameid'].toString();
               _storage.write('userId', userId);
@@ -362,7 +383,7 @@ class ProductApi {
         } catch (e) {
           // Игнорируем ошибки декодирования
         }
-        
+
         // Если все еще null, используем email
         if (userId == null) {
           final email = _storage.read('email');
@@ -370,7 +391,8 @@ class ProductApi {
             userId = email;
             _storage.write('userId', userId);
           } else {
-            throw Exception('Не удалось определить пользователя. Пожалуйста, перезайдите в систему.');
+            throw Exception(
+                'Не удалось определить пользователя. Пожалуйста, перезайдите в систему.');
           }
         }
       }
@@ -400,9 +422,8 @@ class ProductApi {
       print('Image присутствует: ${image.isNotEmpty}');
       if (image.isNotEmpty) {
         final imageLength = image.length;
-        final imagePreview = image.length > 100 
-            ? '${image.substring(0, 100)}...' 
-            : image;
+        final imagePreview =
+            image.length > 100 ? '${image.substring(0, 100)}...' : image;
         print('   - Длина image: $imageLength символов');
         print('   - Первые 100 символов: $imagePreview');
       } else {
@@ -455,7 +476,7 @@ class ProductApi {
   static Future<bool> deleteProduct(int productId) async {
     try {
       final token = _storage.read('token');
-      
+
       final headers = <String, String>{
         'Content-Type': 'application/json',
       };
@@ -482,7 +503,25 @@ class ProductApi {
         return true;
       } else {
         print('❌ Ошибка удаления товара: ${response.statusCode}');
-        throw Exception('Ошибка удаления товара: ${response.statusCode}');
+        String message = 'Ошибка удаления товара: ${response.statusCode}';
+        if (response.statusCode == 401) {
+          message = 'Ошибка авторизации. Войдите в систему заново.';
+        } else if (response.statusCode == 403) {
+          message = 'Нет прав на удаление этого товара.';
+        } else if (response.statusCode == 404) {
+          message = 'Товар не найден.';
+        } else if (response.statusCode == 500) {
+          message =
+              'Ошибка на сервере (500). Проверьте, что товар не используется в заказах, или обратитесь к администратору.';
+        } else if (response.body.isNotEmpty) {
+          try {
+            final err = jsonDecode(response.body);
+            if (err is Map && err.containsKey('message')) {
+              message = err['message']?.toString() ?? message;
+            }
+          } catch (_) {}
+        }
+        throw Exception(message);
       }
     } catch (e) {
       print('❌ Исключение при удалении товара: $e');

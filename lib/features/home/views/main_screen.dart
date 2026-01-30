@@ -106,14 +106,22 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Обновляем данные профиля при возврате на экран (например, после редактирования)
+    profileController.fetchProfileData();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Обновляем данные профиля при открытии экрана
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      profileController.fetchProfileData();
-    });
-    
     return Scaffold(
       backgroundColor: TAppTheme.lightTheme.scaffoldBackgroundColor,
+      onDrawerChanged: (isOpened) {
+        // Обновляем данные профиля при открытии drawer
+        if (isOpened) {
+          profileController.fetchProfileData();
+        }
+      },
       drawer: Drawer(
         backgroundColor: TAppTheme.lightTheme.appBarTheme.shadowColor,
         child: ListView(
@@ -121,13 +129,21 @@ class _MainScreenState extends State<MainScreen> {
           children: [
             Obx(() {
               // Отображаем данные из ProfileController
+              // Данные автоматически обновляются при изменении значений в контроллере
               return Container(
                 decoration: BoxDecoration(
                   color: KColors.primary,
                 ),
                 child: InkWell(
-                  onTap: () {
-                    Get.toNamed(AppRoutes.profile);
+                  onTap: () async {
+                    // Обновляем данные перед переходом на экран профиля
+                    await profileController.fetchProfileData();
+                    // Переходим на экран профиля и ждем результат
+                    final result = await Get.toNamed(AppRoutes.profile);
+                    // Обновляем данные после возврата с экрана профиля
+                    if (result == true || result == null) {
+                      profileController.fetchProfileData();
+                    }
                   },
                   child: Padding(
                     padding: EdgeInsets.only(

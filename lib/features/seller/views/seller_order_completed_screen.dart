@@ -34,8 +34,7 @@ class _SellerOrderCompletedScreenState
       print(
           '⚠️ SellerOrderCompletedScreen: Аргументы не переданы или неверного типа');
       // Показываем предупреждение пользователю
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {});
     }
   }
 
@@ -250,16 +249,24 @@ class _SellerOrderCompletedScreenState
           );
           await _historyRepository.saveOrderToHistory(orderToSave);
 
-          // Затем удаляем заказ с сервера
-          await _orderRepository.deleteOrder(
-            _orderData!.id.toString(),
-          );
+          // Удаляем заказ с сервера (DELETE /order/deleteorder/{orderId}) — иначе он останется в списке
+          await _orderRepository.deleteOrder(_orderData!.id.toString());
 
-          // Переход на главный экран продавца после отправки дрона покупателю
           Get.offAllNamed('/seller-home');
         } catch (e) {
           print('❌ Ошибка при отправке дрона: $e');
-          // Переход на главный экран продавца даже при ошибке
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  e is Exception
+                      ? e.toString().replaceFirst('Exception: ', '')
+                      : 'Ошибка при завершении заказа',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
           Get.offAllNamed('/seller-home');
         } finally {
           if (mounted) {

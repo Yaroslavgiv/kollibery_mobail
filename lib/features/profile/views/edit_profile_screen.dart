@@ -31,8 +31,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       profileController = Get.put(ProfileController());
     }
     
-    // Заполняем текстовые поля текущими данными пользователя
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Загружаем данные профиля с учетом роли и заполняем текстовые поля
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Сначала загружаем актуальные данные профиля
+      await profileController.fetchProfileData();
+      // Затем заполняем текстовые поля
       firstNameController.text = profileController.firstName.value;
       lastNameController.text = profileController.lastName.value;
       phoneController.text = profileController.phone.value;
@@ -140,12 +143,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             phone: phoneController.text.trim(),
                           );
 
+                          // Перезагружаем данные профиля, чтобы убедиться, что они загружены с правильным ключом
+                          await profileController.fetchProfileData();
+
                           // Показываем сообщение об успехе
                           // Данные уже обновлены локально и отображаются в UI
 
-                          // Возвращаемся на предыдущий экран
-                          // Данные уже обновлены и будут видны на экране профиля
-                          Get.back();
+                          // Возвращаемся на предыдущий экран с результатом, чтобы обновить данные в drawer
+                          Get.back(result: true);
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: KColors.primary,

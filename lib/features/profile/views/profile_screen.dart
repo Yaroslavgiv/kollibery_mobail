@@ -151,7 +151,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               SizedBox(height: ScreenUtil.adaptiveHeight(20)),
               Center(
                 child: ElevatedButton(
-                  onPressed: () => Get.toNamed(AppRoutes.profileEdit),
+                  onPressed: () async {
+                    // Переходим на экран редактирования и ждем результат
+                    final result = await Get.toNamed(AppRoutes.profileEdit);
+                    // Обновляем данные после возврата с экрана редактирования
+                    if (result == true) {
+                      profileController.fetchProfileData();
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: KColors.primary,
                     padding: EdgeInsets.symmetric(

@@ -32,27 +32,45 @@ class ProductGrid extends StatelessWidget {
       ),
       itemCount: products.length,
       itemBuilder: (context, index) {
-        final productMap = products[index];
-        final product = ProductModel(
-          id: productMap['id'],
-          createdAt: productMap['createdAt'] ?? '',
-          updatedAt: productMap['updatedAt'] ?? '',
-          isDeleted: productMap['isDeleted'] ?? false,
-          userId: productMap['userId'] ?? '',
-          name: productMap['name'],
-          description: productMap['description'],
-          price: productMap['price'],
-          quantityInStock: productMap['quantityInStock'] ?? 0,
-          category: productMap['category'] ?? '',
-          image: productMap['image'],
-        );
+        try {
+          final productMap = products[index];
+          
+          // Безопасное преобразование типов
+          final rawId = productMap['id'];
+          final id = rawId is int
+              ? rawId
+              : (rawId != null ? (int.tryParse(rawId.toString()) ?? 0) : 0);
+          
+          final rawPrice = productMap['price'];
+          final price = (rawPrice is num)
+              ? rawPrice.toDouble()
+              : (rawPrice != null ? (double.tryParse(rawPrice.toString()) ?? 0.0) : 0.0);
+          
+          final rawQuantity = productMap['quantityInStock'];
+          final quantityInStock = rawQuantity is int
+              ? rawQuantity
+              : (rawQuantity != null ? (int.tryParse(rawQuantity.toString()) ?? 0) : 0);
+          
+          final product = ProductModel(
+            id: id,
+            createdAt: productMap['createdAt']?.toString() ?? '',
+            updatedAt: productMap['updatedAt']?.toString() ?? '',
+            isDeleted: productMap['isDeleted'] ?? false,
+            userId: productMap['userId']?.toString() ?? '',
+            name: productMap['name']?.toString() ?? '',
+            description: productMap['description']?.toString() ?? '',
+            price: price,
+            quantityInStock: quantityInStock,
+            category: productMap['category']?.toString() ?? '',
+            image: productMap['image']?.toString() ?? '',
+          );
 
-        // Универсальное определение провайдера изображения
-        ImageProvider imageProvider =
-            HexImage.resolveImageProvider(product.image) ??
-                const AssetImage('assets/logos/Logo_black.png');
+          // Универсальное определение провайдера изображения
+          ImageProvider imageProvider =
+              HexImage.resolveImageProvider(product.image) ??
+                  const AssetImage('assets/logos/Logo_black.png');
 
-        return GestureDetector(
+          return GestureDetector(
           onTap: () {
             if (onProductTap != null) {
               onProductTap!(productMap);
@@ -76,13 +94,43 @@ class ProductGrid extends StatelessWidget {
             child: Column(
               children: [
                 Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(20)),
-                      image: DecorationImage(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
+                    child: Container(
+                      color: Colors.white,
+                      child: Image(
                         image: imageProvider,
                         fit: BoxFit.contain,
+                        width: double.infinity,
+                        height: double.infinity,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey[200],
+                          child: Center(
+                            child: Icon(
+                              Icons.image_not_supported,
+                              color: Colors.grey[400],
+                              size: 40,
+                            ),
+                          ),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: Colors.grey[100],
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
                       ),
                     ),
                   ),
@@ -131,6 +179,31 @@ class ProductGrid extends StatelessWidget {
             ),
           ),
         );
+        } catch (e, stackTrace) {
+          print('❌ Ошибка при отображении товара $index: $e');
+          print('Stack trace: $stackTrace');
+          // Возвращаем заглушку при ошибке
+          return Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: Colors.grey[200],
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red),
+                  SizedBox(height: 8),
+                  Text(
+                    'Ошибка загрузки',
+                    style: TextStyle(fontSize: 12, color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
       },
     );
   }

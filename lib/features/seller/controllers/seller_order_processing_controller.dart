@@ -3,23 +3,23 @@ import "dart:async";
 import "package:flutter/material.dart";
 import "package:http/http.dart" as http;
 import "../../../data/models/order_model.dart";
-import "../../../data/repositories/order_repository.dart";
 import "../../../data/sources/api/flight_api.dart";
 
 class SellerOrderProcessingController extends GetxController {
-  // Репозиторий для работы с заказами (может использоваться в будущем)
-  // ignore: unused_field
-  final OrderRepository _orderRepository = OrderRepository();
-
-  var currentStep =
-      (-1).obs; // Начинаем с -1, чтобы первая галочка не показывалась сразу
+  var currentStep = 0.obs; // Начинаем с 0 ("Заказ принят")
   var orderData = Rxn<OrderModel>();
 
-  // Изменяем список статусов как у техника
+  // Список статусов согласно таблице для продавца
   final List<String> statuses = [
-    "Дрон вылетел к вам",
-    "Дрон на месте, можно отправлять товар",
+    "Заказ принят", // 0
+    "Дрон вылетел к вам", // 1
+    "Дрон на месте, загрузите товар", // 2
+    "Дрон вылетел к покупателю", // 3
+    "Дрон у покупателя", // 4
+    "Заказ выполнен", // 5
   ];
+
+  Timer? _statusPollingTimer;
 
   @override
   void onInit() {
@@ -35,36 +35,49 @@ class SellerOrderProcessingController extends GetxController {
           '⚠️ SellerOrderProcessingController: Аргументы не переданы или неверного типа');
     }
     startOrderProcessing();
-    // Запускаем автоматическое обновление статусов
-    _startAutomaticStatusUpdate();
   }
 
   @override
   void onClose() {
-    // Очищаем ресурсы при закрытии контроллера
+    _statusPollingTimer?.cancel();
     super.onClose();
   }
 
-  void _startAutomaticStatusUpdate() {
-    // Первая галочка через 5 секунд
-    Future.delayed(Duration(seconds: 5), () {
-      currentStep.value = 0; // Показываем первую галочку
-    });
-
-    // Вторая галочка через 10 секунд после первой (5 + 10 = 15 секунд)
-    Future.delayed(Duration(seconds: 15), () {
-      currentStep.value = 1; // Показываем вторую галочку
-    });
-
-    // Переход на экран итогов через 5 секунд после второй галочки (15 + 5 = 20 секунд)
-    Future.delayed(Duration(seconds: 20), () {
-      // Переходим на отдельную страницу завершения доставки
-      Get.toNamed('/seller-order-completed', arguments: orderData.value);
-    });
-  }
-
   void startOrderProcessing() {
-    // Убираем старую логику, теперь используем _startAutomaticStatusUpdate
+    // Устанавливаем начальный статус "Заказ принят"
+    currentStep.value = 0;
+    
+    // Обновляем статусы каждые 3 секунды (захардкожено)
+    const interval = Duration(seconds: 3);
+    
+    // Статус 1: Дрон вылетел к вам (через 3 секунды)
+    Future.delayed(interval * 1, () {
+      currentStep.value = 1;
+    });
+    
+    // Статус 2: Дрон на месте, загрузите товар (через 6 секунд)
+    Future.delayed(interval * 2, () {
+      currentStep.value = 2;
+    });
+    
+    // Статус 3: Дрон вылетел к покупателю (через 9 секунд)
+    Future.delayed(interval * 3, () {
+      currentStep.value = 3;
+    });
+    
+    // Статус 4: Дрон у покупателя (через 12 секунд)
+    Future.delayed(interval * 4, () {
+      currentStep.value = 4;
+    });
+    
+    // Статус 5: Заказ выполнен (через 15 секунд) и переход на финальный экран
+    Future.delayed(interval * 5, () {
+      currentStep.value = 5;
+      // Переход на экран завершения доставки
+      Future.delayed(const Duration(seconds: 1), () {
+        Get.toNamed('/seller-order-completed', arguments: orderData.value);
+      });
+    });
   }
 
   // Добавляем методы навигации
@@ -171,15 +184,15 @@ class SellerOrderProcessingController extends GetxController {
   }
 
   void resetProcess() {
-    currentStep.value = -1;
-    _startAutomaticStatusUpdate();
+    currentStep.value = 0;
+    startOrderProcessing();
   }
 
   String getCurrentStatus() {
     if (currentStep.value < statuses.length && currentStep.value >= 0) {
       return statuses[currentStep.value];
     }
-    return "Ожидание дрона";
+    return "Ожидание...";
   }
 
   bool get isProcessCompleted => currentStep.value >= statuses.length;

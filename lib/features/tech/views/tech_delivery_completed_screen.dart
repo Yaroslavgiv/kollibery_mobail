@@ -169,7 +169,8 @@ class _TechDeliveryCompletedScreenState
                           SwipeConfirmDialog.show(
                             context: context,
                             title: 'Отправить дрон',
-                            message: 'Вы уверены, что хотите отправить дрон на базу?',
+                            message:
+                                'Вы уверены, что хотите отправить дрон на базу?',
                             confirmText: 'Отправить',
                             confirmColor: Colors.blue,
                             icon: Icons.flight_takeoff,
@@ -208,21 +209,24 @@ class _TechDeliveryCompletedScreenState
   }
 
   void _toggleCargoBay() async {
-    print('🔄 Начало открытия/закрытия отсека. Текущее состояние: isDroneOpen=$isDroneOpen');
-    
+    print(
+        '🔄 Начало открытия/закрытия отсека. Текущее состояние: isDroneOpen=$isDroneOpen');
+
     // Сохраняем предыдущее состояние для возможного отката
     final previousState = isDroneOpen;
-    
+
     // Оптимистичное обновление: сразу меняем состояние и кнопку
     setState(() {
       isDroneOpen = !isDroneOpen;
-      isOpeningDrone = false; // Сразу делаем кнопку активной, не ждем ответа сервера
+      isOpeningDrone =
+          false; // Сразу делаем кнопку активной, не ждем ответа сервера
     });
     print('✅ Состояние обновлено оптимистично. isDroneOpen=$isDroneOpen');
-    
+
     try {
       // Вызываем API для открытия/закрытия отсека
-      final response = await FlightApi.openDroneBox(!previousState); // Используем предыдущее состояние для запроса
+      final response = await FlightApi.openDroneBox(
+          !previousState); // Используем предыдущее состояние для запроса
 
       // Выводим ответ сервера в консоль
       print('📥 Ответ сервера при управлении грузовым отсеком:');
@@ -233,12 +237,12 @@ class _TechDeliveryCompletedScreenState
       // Принимаем успешным любой статус от 200 до 299
       // Также обрабатываем случаи, когда сервер может вернуть другой статус, но операция выполнена
       final responseBody = response.body.toLowerCase();
-      final isSuccessResponse = response.statusCode >= 200 && 
-                                response.statusCode < 300;
+      final isSuccessResponse =
+          response.statusCode >= 200 && response.statusCode < 300;
       final hasSuccessKeyword = responseBody.contains('успех') ||
-                                responseBody.contains('success') ||
-                                responseBody.contains('ok') ||
-                                responseBody.isEmpty; // Пустой ответ тоже может быть успешным
+          responseBody.contains('success') ||
+          responseBody.contains('ok') ||
+          responseBody.isEmpty; // Пустой ответ тоже может быть успешным
 
       if (isSuccessResponse || hasSuccessKeyword) {
         if (hasSuccessKeyword) {
@@ -247,7 +251,6 @@ class _TechDeliveryCompletedScreenState
 
         print('✅ Успешно! Состояние подтверждено: isDroneOpen=$isDroneOpen');
         // Состояние уже обновлено оптимистично, ничего не делаем
-
       } else {
         print(
             '❌ Ошибка при управлении отсеком: ${response.statusCode} - ${response.body}');
@@ -269,7 +272,8 @@ class _TechDeliveryCompletedScreenState
           isDroneOpen = previousState; // Возвращаем предыдущее состояние
           isOpeningDrone = false;
         });
-        print('⚠️ Состояние откачено из-за исключения. isDroneOpen=$isDroneOpen');
+        print(
+            '⚠️ Состояние откачено из-за исключения. isDroneOpen=$isDroneOpen');
       }
     }
   }
@@ -284,17 +288,18 @@ class _TechDeliveryCompletedScreenState
     });
 
     try {
-      // Обновляем статус заказа на "delivered" чтобы он попал в историю
-      // Статус будет сохранен локально даже если сервер не поддерживает обновление
+      // Обновляем статус заказа на "delivered"
       await _orderRepository.updateOrderStatus(
         _orderData!.id.toString(),
         'delivered',
       );
 
+      // Удаляем заказ с сервера — он исчезнет из списка заказов (API: DELETE /order/deleteorder/{orderId})
+      await _orderRepository.deleteOrder(_orderData!.id.toString());
+
       // Имитация задержки отправки
       await Future.delayed(Duration(milliseconds: 500));
-      
-      // Возвращаемся к списку заказов (он автоматически обновится)
+
       Get.offAllNamed('/tech-home');
     } catch (e) {
       print('❌ Неожиданная ошибка при отправке дрона: $e');

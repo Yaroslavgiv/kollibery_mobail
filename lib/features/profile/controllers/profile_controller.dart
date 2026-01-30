@@ -35,23 +35,42 @@ class ProfileController extends GetxController {
       print('   - Текущий email: $currentEmail');
 
       // Сначала загружаем данные из локального хранилища для быстрого отображения
-      final storedData = storage.read<Map<String, dynamic>>('userProfile');
-      if (storedData != null && storedData.isNotEmpty) {
-        firstName.value = storedData['firstName']?.toString().trim() ?? '';
-        lastName.value = storedData['lastName']?.toString().trim() ?? '';
-        email.value = storedData['email']?.toString().trim() ?? '';
-        phone.value = storedData['phone']?.toString().trim() ?? '';
+      // Используем ключ с учетом роли
+      final storageKey = _getProfileStorageKey();
+      final storedData = storage.read<Map<String, dynamic>>(storageKey);
+      
+      // Для обратной совместимости: если данных нет для текущей роли, 
+      // пробуем загрузить из старого ключа 'userProfile'
+      Map<String, dynamic>? profileData = storedData;
+      if (profileData == null || profileData.isEmpty) {
+        final oldData = storage.read<Map<String, dynamic>>('userProfile');
+        if (oldData != null && oldData.isNotEmpty) {
+          print('⚠️ Найдены данные в старом формате, мигрируем в новый формат');
+          profileData = oldData;
+        }
+      }
+      
+      if (profileData != null && profileData.isNotEmpty) {
+        firstName.value = profileData['firstName']?.toString().trim() ?? '';
+        lastName.value = profileData['lastName']?.toString().trim() ?? '';
+        email.value = profileData['email']?.toString().trim() ?? '';
+        phone.value = profileData['phone']?.toString().trim() ?? '';
         deliveryPoint.value =
-            storedData['deliveryPoint']?.toString().trim() ?? '';
+            profileData['deliveryPoint']?.toString().trim() ?? '';
         profileImage.value =
-            storedData['profileImage']?.toString().trim() ?? '';
+            profileData['profileImage']?.toString().trim() ?? '';
 
         // Отладочная информация
-        print('✅ Данные профиля загружены из локального хранилища:');
+        print('✅ Данные профиля загружены из локального хранилища (ключ: $storageKey):');
         print('   - firstName: ${firstName.value}');
         print('   - lastName: ${lastName.value}');
         print('   - email: ${email.value}');
         print('   - phone: ${phone.value}');
+
+        // Если данные были загружены из старого формата, сохраняем в новый формат
+        if (storedData == null || storedData.isEmpty) {
+          saveProfileData();
+        }
 
         // Проверяем, что email совпадает с текущим пользователем
         if (email.value.isNotEmpty &&
@@ -69,7 +88,7 @@ class ProfileController extends GetxController {
           email.value = authEmail;
         }
 
-        print('⚠️ Данные профиля не найдены в локальном хранилище');
+        print('⚠️ Данные профиля не найдены в локальном хранилище для роли: $currentRole');
       }
 
       // Пытаемся загрузить актуальные данные с сервера
@@ -241,9 +260,16 @@ class ProfileController extends GetxController {
     }
   }
 
-  /// Сохранение данных профиля в локальное хранилище
+  /// Получение ключа хранилища для профиля с учетом роли
+  String _getProfileStorageKey() {
+    final role = storage.read<String>('role') ?? 'buyer';
+    return 'userProfile_$role';
+  }
+
+  /// Сохранение данных профиля в локальное хранилище с учетом роли
   void saveProfileData() {
-    storage.write('userProfile', {
+    final storageKey = _getProfileStorageKey();
+    storage.write(storageKey, {
       'firstName': firstName.value,
       'lastName': lastName.value,
       'email': email.value,
@@ -251,6 +277,7 @@ class ProfileController extends GetxController {
       'deliveryPoint': deliveryPoint.value,
       'profileImage': profileImage.value,
     });
+    print('💾 Данные профиля сохранены под ключом: $storageKey');
   }
 
   /// Выбор изображения профиля из галереи
@@ -276,6 +303,9 @@ class ProfileController extends GetxController {
     this.email.value = email;
     this.phone.value = phone;
 
+    // Получаем текущую роль для логирования
+    final currentRole = storage.read<String>('role') ?? 'buyer';
+    
     // СРАЗУ сохраняем в локальное хранилище
     saveProfileData();
 
@@ -287,6 +317,8 @@ class ProfileController extends GetxController {
     }
 
     print('✅ Данные профиля обновлены локально и отображаются в UI');
+    print('   - Роль: $currentRole');
+    print('   - Ключ хранилища: ${_getProfileStorageKey()}');
     print('   - firstName: $firstName');
     print('   - lastName: $lastName');
     print('   - email: $email');

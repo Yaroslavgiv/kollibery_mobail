@@ -1,33 +1,33 @@
-import '../../../utils/local_storage/storage_utility.dart';
+import '../../../utils/local_storage/order_history_service.dart';
 import '../models/order_model.dart';
 
 /// Репозиторий для работы с историей заказов в локальном кеше
 class OrderHistoryRepository {
-  static const String _historyKey = 'seller_order_history';
-  final KLocalStorage _localStorage = KLocalStorage();
 
   /// Сохранение заказа в историю
+  /// Сохраняет только выполненные заказы (статус 'delivered')
+  /// Автоматически ограничивает историю до 5 последних заказов
   Future<void> saveOrderToHistory(OrderModel order) async {
     try {
-      // Локальное сохранение истории отключено по требованию.
-      // История берется с сервера через /order/getlastfiveorders.
-      print('ℹ️ Локальное сохранение истории отключено для заказа ${order.id}');
+      // Сохраняем только выполненные заказы
+      if (order.status.toLowerCase() == 'delivered') {
+        await OrderHistoryService.addToHistory(order);
+        print('✅ Заказ #${order.id} сохранен в локальную историю (статус: delivered)');
+      } else {
+        print('ℹ️ Заказ #${order.id} не сохранен в историю (статус: ${order.status}, требуется: delivered)');
+      }
     } catch (e) {
       print('❌ Ошибка при сохранении заказа в историю: $e');
     }
   }
 
-  /// Получение истории заказов
+  /// Получение истории заказов из локального хранилища
   List<OrderModel> getOrderHistory() {
     try {
-      final historyData = _localStorage.readData<List<dynamic>>(_historyKey);
-      if (historyData == null || historyData.isEmpty) {
-        return [];
-      }
-      
-      return historyData
-          .map((json) => OrderModel.fromJson(json as Map<String, dynamic>))
-          .toList();
+      // Используем OrderHistoryService для получения истории
+      final history = OrderHistoryService.getHistory();
+      print('📥 Загружено ${history.length} заказов из локальной истории');
+      return history;
     } catch (e) {
       print('❌ Ошибка при чтении истории заказов: $e');
       return [];
@@ -37,7 +37,7 @@ class OrderHistoryRepository {
   /// Очистка истории заказов
   Future<void> clearHistory() async {
     try {
-      await _localStorage.removeData(_historyKey);
+      await OrderHistoryService.clearHistory();
       print('✅ История заказов очищена');
     } catch (e) {
       print('❌ Ошибка при очистке истории заказов: $e');

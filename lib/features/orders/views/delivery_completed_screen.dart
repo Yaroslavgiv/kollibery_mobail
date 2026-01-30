@@ -317,40 +317,50 @@ class _DeliveryCompletedScreenState extends State<DeliveryCompletedScreen> {
     }
 
     try {
-      // Обновляем статус заказа на "delivered" чтобы он попал в историю
+      // Обновляем статус заказа на "delivered"
       if (_isTechnician) {
-        _orderRepository
+        await _orderRepository
             .updateOrderStatus(
           _orderData!.id.toString(),
           'delivered',
         )
             .catchError((error) {
-          print('❌ Ошибка при подтверждении получения заказа: $error');
+          print('❌ Ошибка при обновлении статуса заказа: $error');
           return false;
         });
       } else {
-        await _orderRepository.updateOrderStatus(
+        await _orderRepository
+            .updateOrderStatus(
           _orderData!.id.toString(),
           'delivered',
-        );
+        )
+            .catchError((error) {
+          print('❌ Ошибка при обновлении статуса заказа: $error');
+          return false;
+        });
+      }
 
-        // Имитация задержки обработки
+      // Удаляем заказ с сервера — он исчезнет из списка заказов (API: DELETE /order/deleteorder/{orderId})
+      await _orderRepository
+          .deleteOrder(_orderData!.id.toString())
+          .catchError((error) {
+        print('❌ Ошибка при удалении заказа: $error');
+        return false;
+      });
+
+      if (!_isTechnician) {
         await Future.delayed(Duration(milliseconds: 500));
       }
-
-      // Возвращаемся на главный экран в зависимости от роли
-      if (_isTechnician) {
-        // Для техника возвращаемся на экран техника
-        Get.offAllNamed(AppRoutes.techHome);
-      } else {
-        // Для покупателя возвращаемся на домашний экран
-        Get.offAllNamed(AppRoutes.home);
-      }
-
-      // Показываем сообщение об успехе
     } catch (e) {
       print('❌ Ошибка при подтверждении получения заказа: $e');
     } finally {
+      // Переход на главный экран происходит всегда, даже при ошибках
+      if (_isTechnician) {
+        Get.offAllNamed(AppRoutes.techHome);
+      } else {
+        Get.offAllNamed(AppRoutes.home);
+      }
+
       if (!_isTechnician && mounted) {
         setState(() {
           isReceivingOrder = false;

@@ -483,7 +483,10 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen>
     print('🔄 Обновление списка заказов продавца...');
     setState(() {
       _future = orderRepository.fetchSellerOrdersAsModels().then((orders) {
-        print('✅ Загружено ${orders.length} заказов для продавца');
+        print(
+            '✅ Загружено ${orders.length} заказов для продавца (GET /order/getorders)');
+        print(
+            '🔍 ДИАГНОСТИКА: Список пришёл с сервера. Если только что удалили заказ и он всё ещё здесь — бэкенд не исключает удалённые заказы из getorders (проблема на сервере).');
         orders.sort((a, b) => (b.createdAt ?? DateTime(1970))
             .compareTo(a.createdAt ?? DateTime(1970)));
         if (orders.isEmpty) {
@@ -689,59 +692,29 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen>
   }
 
   void _sendProduct(OrderModel order) async {
-    final confirmed = await Get.dialog<bool>(
-      AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text(
-          'Отправить товар',
-          style: TextStyle(color: Colors.black),
-        ),
-        content: Text(
-          'Вы уверены, что хотите отправить товар? Выберите точку отправки на карте.',
-          style: TextStyle(color: Colors.black),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(result: false),
-            child: Text('Отмена', style: TextStyle(color: Colors.black)),
-          ),
-          ElevatedButton(
-            onPressed: () => Get.back(result: true),
-            child: Text('Отправить товар'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        final orderToSave = OrderModel(
-          id: order.id,
-          userId: order.userId,
-          productId: order.productId,
-          quantity: order.quantity,
-          deliveryLatitude: order.deliveryLatitude,
-          deliveryLongitude: order.deliveryLongitude,
-          status: 'shipped',
-          productName: order.productName,
-          productImage: order.productImage,
-          price: order.price,
-          buyerName: order.buyerName,
-          sellerName: order.sellerName,
-          createdAt: order.createdAt,
-          updatedAt: DateTime.now(),
-          productDescription: order.productDescription,
-          productCategory: order.productCategory,
-        );
-        await historyRepository.saveOrderToHistory(orderToSave);
-        Get.toNamed('/seller-pickup-location', arguments: order);
-      } catch (e) {
-        print('❌ Ошибка при сохранении заказа в историю: $e');
-      }
+    try {
+      final orderToSave = OrderModel(
+        id: order.id,
+        userId: order.userId,
+        productId: order.productId,
+        quantity: order.quantity,
+        deliveryLatitude: order.deliveryLatitude,
+        deliveryLongitude: order.deliveryLongitude,
+        status: 'shipped',
+        productName: order.productName,
+        productImage: order.productImage,
+        price: order.price,
+        buyerName: order.buyerName,
+        sellerName: order.sellerName,
+        createdAt: order.createdAt,
+        updatedAt: DateTime.now(),
+        productDescription: order.productDescription,
+        productCategory: order.productCategory,
+      );
+      await historyRepository.saveOrderToHistory(orderToSave);
+      Get.toNamed('/seller-pickup-location', arguments: order);
+    } catch (e) {
+      print('❌ Ошибка при сохранении заказа в историю: $e');
     }
   }
 }

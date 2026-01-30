@@ -70,9 +70,9 @@ class _SellerPickupLocationScreenState
         _pickupMarker = Marker(
           point: newPosition,
           child: Icon(
-            Icons.store,
-            color: Colors.orange,
-            size: 40,
+            Icons.location_on,
+            color: Colors.red,
+            size: 48,
           ),
         );
       });
@@ -91,9 +91,9 @@ class _SellerPickupLocationScreenState
       _pickupMarker = Marker(
         point: point,
         child: Icon(
-          Icons.store,
-          color: Colors.orange,
-          size: 40,
+          Icons.location_on,
+          color: Colors.red,
+          size: 48,
         ),
       );
     });
@@ -122,9 +122,9 @@ class _SellerPickupLocationScreenState
             _pickupMarker = Marker(
               point: newPosition,
               child: Icon(
-                Icons.store,
-                color: Colors.orange,
-                size: 40,
+                Icons.location_on,
+                color: Colors.red,
+                size: 48,
               ),
             );
           });
@@ -143,46 +143,9 @@ class _SellerPickupLocationScreenState
     if (_pickupMarker == null) {
       return;
     }
-
-    Get.dialog(
-      AlertDialog(
-        title: Text("Подтвердить точку отправки",
-            style: TextStyle(color: Colors.black)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Вы уверены, что хотите отправить заказ с этой точки?",
-                style: TextStyle(color: Colors.black)),
-            SizedBox(height: 8),
-            Text(
-              "Координаты: ${_pickupMarker!.point.latitude.toStringAsFixed(6)}, ${_pickupMarker!.point.longitude.toStringAsFixed(6)}",
-              style: TextStyle(fontSize: 12, color: Colors.black),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text("Отмена", style: TextStyle(color: Colors.black)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              // Переход к экрану статусов обработки заказа
-              print(
-                  '✅ Переход на экран статуса заказа с данными: ${widget.orderData.id}');
-              Get.toNamed("/seller-order-status", arguments: widget.orderData);
-            },
-            child: Text("Подтвердить"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
+    print(
+        '✅ Переход на экран статуса заказа с данными: ${widget.orderData.id}');
+    Get.toNamed("/seller-order-status", arguments: widget.orderData);
   }
 
   @override

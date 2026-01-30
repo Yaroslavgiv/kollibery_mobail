@@ -38,10 +38,22 @@ class OrderModel {
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
+    // API может вернуть id как int или String — для DELETE /order/deleteorder/{orderId} нужен int
+    final rawId = json['id'];
+    final id = rawId is int
+        ? rawId
+        : (rawId != null ? (int.tryParse(rawId.toString()) ?? 0) : 0);
+    // productId с сервера может быть int или String
+    final rawProductId = json['productId'];
+    final productId = rawProductId is int
+        ? rawProductId
+        : (rawProductId != null
+            ? (int.tryParse(rawProductId.toString()) ?? 0)
+            : 0);
     return OrderModel(
-      id: json['id'] ?? 0,
+      id: id,
       userId: json['userId'] ?? '',
-      productId: json['productId'] ?? 0,
+      productId: productId,
       quantity: json['quantity'] ?? 1,
       deliveryLatitude: (json['deliveryLatitude'] is num)
           ? (json['deliveryLatitude'] as num).toDouble()

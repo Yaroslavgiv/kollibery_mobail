@@ -3,6 +3,7 @@ import '../../../common/styles/colors.dart';
 import '../../../common/themes/text_theme.dart';
 import '../../../data/models/order_model.dart';
 import '../../../data/repositories/order_repository.dart';
+import '../../../data/repositories/order_history_repository.dart';
 import '../../../utils/device/screen_util.dart';
 import '../../../utils/helpers/hex_image.dart';
 
@@ -15,6 +16,7 @@ class OrderHistoryScreen extends StatefulWidget {
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   final OrderRepository _orderRepository = OrderRepository();
+  final OrderHistoryRepository _historyRepository = OrderHistoryRepository();
   List<OrderModel> _historyOrders = [];
   bool _isLoading = true;
 
@@ -27,39 +29,58 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   Future<void> _loadHistory() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
+    
+    // Сначала загружаем локальную историю для быстрого отображения
+    final localHistory = _historyRepository.getOrderHistory();
+    
     try {
+      // Пытаемся загрузить историю с сервера
       final serverHistory =
           await _orderRepository.fetchLastFiveOrdersAsModels();
-      final uniqueHistory = _dedupeById(serverHistory);
-      uniqueHistory.sort((a, b) => (b.createdAt ?? DateTime(1970))
+      
+      // Объединяем локальную и серверную историю, убираем дубликаты
+      final allHistory = <OrderModel>[];
+      final seenIds = <int>{};
+      
+      // Сначала добавляем серверные заказы
+      for (final order in serverHistory) {
+        if (seenIds.add(order.id)) {
+          allHistory.add(order);
+        }
+      }
+      
+      // Затем добавляем локальные заказы, которых нет на сервере
+      for (final order in localHistory) {
+        if (seenIds.add(order.id)) {
+          allHistory.add(order);
+        }
+      }
+      
+      // Сортируем по дате создания (новые первыми)
+      allHistory.sort((a, b) => (b.createdAt ?? DateTime(1970))
           .compareTo(a.createdAt ?? DateTime(1970)));
+      
+      // Ограничиваем до 5 последних заказов
+      final uniqueHistory = allHistory.take(5).toList();
+      
       if (mounted) {
         setState(() {
           _historyOrders = uniqueHistory;
           _isLoading = false;
         });
+        print('✅ Загружено ${uniqueHistory.length} заказов в историю (${serverHistory.length} с сервера, ${localHistory.length} локально)');
       }
     } catch (e) {
       print('⚠️ Не удалось получить историю с сервера: $e');
+      // Если сервер недоступен, показываем только локальную историю
       if (mounted) {
         setState(() {
-          _historyOrders = [];
+          _historyOrders = localHistory;
           _isLoading = false;
         });
+        print('✅ Загружено ${localHistory.length} заказов из локальной истории (сервер недоступен)');
       }
     }
-  }
-
-  List<OrderModel> _dedupeById(List<OrderModel> orders) {
-    final seenIds = <int>{};
-    final result = <OrderModel>[];
-    for (final order in orders) {
-      final id = order.id;
-      if (seenIds.add(id)) {
-        result.add(order);
-      }
-    }
-    return result;
   }
 
   String _getStatusText(String status) {
