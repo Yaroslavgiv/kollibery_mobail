@@ -6,17 +6,19 @@ import 'dart:async';
 class DroneStatusController extends GetxController {
   late DeviceStatusWebSocket _webSocket;
   
-  final Rx<DeviceStatus> status = DeviceStatus.unknown.obs;
+  final Rx<DeviceStatus> status = DeviceStatus.disconnected.obs;
   final RxString deviceName = 'Дрон Колибри 001'.obs;
   final RxBool isConnected = false.obs;
   final RxMap<String, dynamic> additionalData = <String, dynamic>{}.obs;
   
   StreamSubscription<DeviceStatusData>? _statusSubscription;
+  Timer? _statusUpdateTimer;
 
   @override
   void onInit() {
     super.onInit();
     _initializeWebSocket();
+    _startPeriodicStatusUpdate();
   }
 
   void _initializeWebSocket() {
@@ -47,6 +49,18 @@ class DroneStatusController extends GetxController {
     _webSocket.connect();
   }
 
+  /// Запускает периодическое обновление статуса каждые 5 секунд
+  void _startPeriodicStatusUpdate() {
+    _statusUpdateTimer?.cancel();
+    _statusUpdateTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (timer) {
+        // Запрашиваем статус через WebSocket
+        _webSocket.requestStatus();
+      },
+    );
+  }
+
   String getStatusText() {
     switch (status.value) {
       case DeviceStatus.connected:
@@ -54,7 +68,7 @@ class DroneStatusController extends GetxController {
       case DeviceStatus.disconnected:
         return 'НЕТ СВЯЗИ';
       case DeviceStatus.unknown:
-        return 'НЕИЗВЕСТНО';
+        return 'НЕТ СВЯЗИ'; // Убрали "НЕИЗВЕСТНО", заменяем на "НЕТ СВЯЗИ"
     }
   }
 
@@ -66,6 +80,7 @@ class DroneStatusController extends GetxController {
 
   @override
   void onClose() {
+    _statusUpdateTimer?.cancel();
     _statusSubscription?.cancel();
     _webSocket.dispose();
     super.onClose();

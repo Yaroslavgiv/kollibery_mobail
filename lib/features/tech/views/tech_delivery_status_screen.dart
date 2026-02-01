@@ -4,16 +4,36 @@ import "package:get/get.dart";
 import "../../../common/themes/text_theme.dart";
 import "../controllers/tech_delivery_status_controller.dart";
 
-class TechDeliveryStatusScreen extends StatelessWidget {
+class TechDeliveryStatusScreen extends StatefulWidget {
+  @override
+  State<TechDeliveryStatusScreen> createState() => _TechDeliveryStatusScreenState();
+}
+
+class _TechDeliveryStatusScreenState extends State<TechDeliveryStatusScreen> {
+  late TechDeliveryStatusController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    // Инициализируем контроллер, если его еще нет
+    controller = Get.put(TechDeliveryStatusController());
+  }
+
+  @override
+  void dispose() {
+    // Удаляем контроллер при выходе с экрана, чтобы избежать утечек памяти
+    Get.delete<TechDeliveryStatusController>();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return GetBuilder<TechDeliveryStatusController>(
-      init: TechDeliveryStatusController(),
       builder: (controller) {
         return Scaffold(
           appBar: AppBar(
             title: Text("Статус вылета дрона"),
-            backgroundColor: Colors.blue,
+            backgroundColor: Colors.orange,
           ),
           body: Padding(
             padding: EdgeInsets.all(16),
@@ -51,7 +71,7 @@ class TechDeliveryStatusScreen extends StatelessWidget {
                     },
                   ),
                 ),
-                // Убираем кнопки "Назад" и "Далее"
+                // Убираем кнопки "Назад" и "Далее" как у продавца
               ],
             ),
           ),

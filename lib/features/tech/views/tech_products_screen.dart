@@ -141,6 +141,7 @@ class _TechProductsScreenState extends State<TechProductsScreen> {
                       .toList();
                   return ProductGrid(
                     products: products,
+                    showCartButton: false, // Убираем корзину для техника
                     onProductTap: (productMap) {
                       final product = ProductModel.fromJson(productMap);
                       Get.to(() => TechProductCardScreen(product: product));

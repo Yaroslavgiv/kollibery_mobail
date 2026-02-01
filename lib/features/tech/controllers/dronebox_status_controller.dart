@@ -6,7 +6,7 @@ import 'dart:async';
 class DroneboxStatusController extends GetxController {
   late DeviceStatusWebSocket _webSocket;
   
-  final Rx<DeviceStatus> status = DeviceStatus.unknown.obs;
+  final Rx<DeviceStatus> status = DeviceStatus.disconnected.obs;
   final RxString deviceName = 'Дронбокс Колибри 001'.obs;
   final RxBool isConnected = false.obs;
   final RxMap<String, dynamic> additionalData = <String, dynamic>{}.obs;
@@ -54,7 +54,7 @@ class DroneboxStatusController extends GetxController {
       case DeviceStatus.disconnected:
         return 'НЕТ СВЯЗИ';
       case DeviceStatus.unknown:
-        return 'НЕИЗВЕСТНО';
+        return 'НЕТ СВЯЗИ'; // Убрали "НЕИЗВЕСТНО", заменяем на "НЕТ СВЯЗИ"
     }
   }
 

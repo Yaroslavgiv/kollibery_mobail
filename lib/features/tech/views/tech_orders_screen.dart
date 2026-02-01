@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../data/repositories/order_repository.dart';
+import '../../../data/repositories/order_history_repository.dart';
 import '../../../data/models/order_model.dart';
 import '../../../utils/helpers/hex_image.dart';
 
@@ -12,6 +13,7 @@ class TechOrdersScreen extends StatefulWidget {
 class _TechOrdersScreenState extends State<TechOrdersScreen>
     with SingleTickerProviderStateMixin {
   final OrderRepository orderRepository = OrderRepository();
+  final OrderHistoryRepository historyRepository = OrderHistoryRepository();
   late Future<List<OrderModel>> _future;
   late TabController _tabController;
 
@@ -55,13 +57,35 @@ class _TechOrdersScreenState extends State<TechOrdersScreen>
 
   // Фильтрация истории заказов (завершенных или отмененных)
   List<OrderModel> _getHistoryOrders(List<OrderModel> orders) {
-    final historyOrders = orders.where((order) {
+    // Сначала загружаем локальную историю для быстрого отображения
+    final localHistory = historyRepository.getTechOrderHistory();
+    
+    // Фильтруем заказы с сервера (завершенные или отмененные)
+    final serverHistoryOrders = orders.where((order) {
       final status = order.status.toLowerCase();
       return status == 'delivered' || status == 'cancelled';
     }).toList();
 
+    // Объединяем локальную и серверную историю, убираем дубликаты
+    final allHistory = <OrderModel>[];
+    final seenIds = <int>{};
+    
+    // Сначала добавляем серверные заказы
+    for (final order in serverHistoryOrders) {
+      if (seenIds.add(order.id)) {
+        allHistory.add(order);
+      }
+    }
+    
+    // Затем добавляем локальные заказы, которых нет на сервере
+    for (final order in localHistory) {
+      if (seenIds.add(order.id)) {
+        allHistory.add(order);
+      }
+    }
+
     // Сортируем по дате создания (новые сверху)
-    historyOrders.sort((a, b) {
+    allHistory.sort((a, b) {
       if (a.createdAt == null && b.createdAt == null) return 0;
       if (a.createdAt == null) return 1;
       if (b.createdAt == null) return -1;
@@ -69,7 +93,7 @@ class _TechOrdersScreenState extends State<TechOrdersScreen>
     });
 
     // Возвращаем только последние 5 заказов
-    return historyOrders.take(5).toList();
+    return allHistory.take(5).toList();
   }
 
   @override
@@ -114,58 +138,16 @@ class _TechOrdersScreenState extends State<TechOrdersScreen>
     );
   }
 
-  String _getStatusText(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return 'Ожидает обработки';
-      case 'processing':
-        return 'В обработке';
-      case 'preparing':
-        return 'Готовится';
-      case 'in_transit':
-        return 'В пути';
-      case 'shipped':
-        return 'Отправлен';
-      case 'delivered':
-        return 'Доставлен';
-      case 'cancelled':
-        return 'Отменен';
-      case 'tech_review':
-        return 'На техническом осмотре';
-      case 'ready_for_delivery':
-        return 'Готов к доставке';
-      default:
-        return status;
-    }
-  }
-
-  Widget _getStatusIcon(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return Icon(Icons.schedule, color: Colors.orange);
-      case 'processing':
-        return Icon(Icons.work, color: Colors.blue);
-      case 'preparing':
-        return Icon(Icons.inventory_2, color: Colors.blue.shade700);
-      case 'in_transit':
-        return Icon(Icons.local_shipping, color: Colors.green);
-      case 'shipped':
-        return Icon(Icons.local_shipping, color: Colors.green);
-      case 'delivered':
-        return Icon(Icons.check_circle, color: Colors.green);
-      case 'cancelled':
-        return Icon(Icons.cancel, color: Colors.red);
-      case 'tech_review':
-        return Icon(Icons.engineering, color: Colors.purple);
-      case 'ready_for_delivery':
-        return Icon(Icons.delivery_dining, color: Colors.green);
-      default:
-        return SizedBox.shrink();
-    }
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+  /// Время с сервера на 3 часа меньше московского — прибавляем 3 часа при отображении.
+  String _formatOrderDate(DateTime? date) {
+    if (date == null) return 'Дата не указана';
+    final moscow = date.add(const Duration(hours: 3));
+    final d = moscow.day.toString().padLeft(2, '0');
+    final m = moscow.month.toString().padLeft(2, '0');
+    final y = moscow.year;
+    final h = moscow.hour.toString().padLeft(2, '0');
+    final min = moscow.minute.toString().padLeft(2, '0');
+    return '$d.$m.$y $h:$min';
   }
 
   Widget _buildOrdersList(bool isActive) {
@@ -256,6 +238,7 @@ class _TechOrdersScreenState extends State<TechOrdersScreen>
             return RefreshIndicator(
               onRefresh: _refresh,
               child: ListView.builder(
+                padding: EdgeInsets.all(16),
                 itemCount: filteredOrders.length,
                 itemBuilder: (context, index) {
                   final order = filteredOrders[index];
@@ -264,7 +247,7 @@ class _TechOrdersScreenState extends State<TechOrdersScreen>
                           const AssetImage('assets/logos/Logo_black.png');
 
                   return Card(
-                    margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    margin: EdgeInsets.only(bottom: 12),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -283,24 +266,21 @@ class _TechOrdersScreenState extends State<TechOrdersScreen>
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SizedBox(height: 4),
-                              Text('Статус: ${_getStatusText(order.status)}'),
                               Text('Количество: ${order.quantity}'),
-                              Text('Цена: ${order.price.toStringAsFixed(2)} ₽'),
                               Text(
-                                  'Продавец: ${order.sellerName.isNotEmpty ? order.sellerName : 'Не указан'}'),
-                              if (order.createdAt != null)
-                                Text('Дата: ${_formatDate(order.createdAt!)}'),
+                                  'Цена: ${order.price.toStringAsFixed(2)} ₽'),
                               Text(
-                                  'Координаты: ${order.deliveryLatitude.toStringAsFixed(6)}, ${order.deliveryLongitude.toStringAsFixed(6)}'),
+                                  'Дата: ${_formatOrderDate(order.createdAt ?? order.updatedAt)}'),
                             ],
                           ),
-                          trailing: _getStatusIcon(order.status),
                           isThreeLine: true,
                         ),
                         Padding(
-                          padding:
-                              const EdgeInsets.only(right: 12.0, bottom: 12.0),
+                          padding: EdgeInsets.only(
+                            left: 16,
+                            right: 16,
+                            bottom: 12,
+                          ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
@@ -310,6 +290,21 @@ class _TechOrdersScreenState extends State<TechOrdersScreen>
                                 },
                                 child: Text('Детали'),
                               ),
+                              // Кнопка "Взять в работу" показывается только для активных заказов
+                              if (isActive) ...[
+                                SizedBox(width: 8),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    // Переходим к экрану выбора точки посадки дрона
+                                    Get.toNamed('/tech-pickup-location', arguments: order);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: Text('Взять в работу'),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -327,137 +322,68 @@ class _TechOrdersScreenState extends State<TechOrdersScreen>
 
   void _showOrderDetails(
       BuildContext context, OrderModel order, bool isActive) {
-    // Алерт-диалоги отключены по требованию
-    return;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text(
-          'Детали заказа #${order.id}',
-          style: TextStyle(color: Colors.black),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Информация о товаре
-              Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Информация о товаре:',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Название: ${order.productName.isNotEmpty ? order.productName : 'Товар #${order.productId}'}',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    if (order.productDescription.isNotEmpty) ...[
-                      SizedBox(height: 4),
-                      Text(
-                        'Описание: ${order.productDescription}',
-                        style: TextStyle(color: Colors.black),
-                      ),
-                    ],
-                    if (order.productCategory.isNotEmpty) ...[
-                      SizedBox(height: 4),
-                      Container(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'Категория: ${order.productCategory}',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              SizedBox(height: 12),
-
-              // Детали заказа
-              Text(
-                'Детали заказа:',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text('Количество: ${order.quantity}',
-                  style: TextStyle(color: Colors.black)),
-              SizedBox(height: 8),
-              Text('Цена за единицу: ${order.price.toStringAsFixed(2)} ₽',
-                  style: TextStyle(color: Colors.black)),
-              SizedBox(height: 8),
-              Text(
-                  'Общая стоимость: ${(order.price * order.quantity).toStringAsFixed(2)} ₽',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                  )),
-              SizedBox(height: 8),
-              Text(
-                  'Продавец: ${order.sellerName.isNotEmpty ? order.sellerName : 'Не указан'}',
-                  style: TextStyle(color: Colors.black)),
-              SizedBox(height: 8),
-              Text('Координаты доставки:',
-                  style: TextStyle(color: Colors.black)),
-              Text('  Широта: ${order.deliveryLatitude.toStringAsFixed(6)}',
-                  style: TextStyle(color: Colors.black)),
-              Text('  Долгота: ${order.deliveryLongitude.toStringAsFixed(6)}',
-                  style: TextStyle(color: Colors.black)),
-              if (order.createdAt != null) ...[
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Детали заказа',
+            style: TextStyle(color: Colors.black),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Товар: ${order.productName.isNotEmpty ? order.productName : 'Товар #${order.productId}'}',
+                    style: TextStyle(color: Colors.black)),
                 SizedBox(height: 8),
-                Text('Дата создания: ${_formatDate(order.createdAt!)}',
+                Text('Количество: ${order.quantity}',
+                    style: TextStyle(color: Colors.black)),
+                SizedBox(height: 8),
+                Text('Цена за единицу: ${order.price.toStringAsFixed(2)} ₽',
+                    style: TextStyle(color: Colors.black)),
+                SizedBox(height: 8),
+                Text(
+                    'Общая стоимость: ${(order.price * order.quantity).toStringAsFixed(2)} ₽',
+                    style: TextStyle(color: Colors.black)),
+                SizedBox(height: 8),
+                Text(
+                    'Покупатель: ${order.buyerName.isNotEmpty ? order.buyerName : 'Не указан'}',
+                    style: TextStyle(color: Colors.black)),
+                SizedBox(height: 8),
+                Text(
+                    'Координаты доставки: ${order.deliveryLatitude.toStringAsFixed(6)}, ${order.deliveryLongitude.toStringAsFixed(6)}',
+                    style: TextStyle(color: Colors.black)),
+                SizedBox(height: 8),
+                Text(
+                    'Дата создания: ${_formatOrderDate(order.createdAt ?? order.updatedAt)}',
                     style: TextStyle(color: Colors.black)),
               ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Закрыть', style: TextStyle(color: Colors.black)),
-          ),
-          // Кнопка "Взять в работу" показывается только для активных заказов
-          if (isActive)
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // Переходим к экрану выбора точки посадки дрона
-                Get.toNamed('/tech-pickup-location', arguments: order);
-              },
-              child: Text('Взять в работу'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-              ),
             ),
-        ],
-      ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Закрыть', style: TextStyle(color: Colors.black)),
+            ),
+            // Кнопка "Взять в работу" показывается только для активных заказов
+            if (isActive)
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Переходим к экрану выбора точки посадки дрона
+                  Get.toNamed('/tech-pickup-location', arguments: order);
+                },
+                child: Text('Взять в работу'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

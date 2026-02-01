@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../home/models/product_model.dart';
-import '../../profile/views/delivery_point_screen.dart';
 import '../../../utils/helpers/hex_image.dart';
 
 class TechProductCardScreen extends StatelessWidget {
@@ -50,8 +49,22 @@ class TechProductCardScreen extends StatelessWidget {
             Center(
               child: ElevatedButton(
                 onPressed: () {
-                  // Заказать как покупатель
-                  Get.to(() => DeliveryPointScreen(role: 'tech_buyer'));
+                  // Заказать как покупатель - передаем данные о товаре
+                  final productData = {
+                    'id': product.id,
+                    'name': product.name,
+                    'description': product.description,
+                    'price': product.price,
+                    'image': product.image,
+                    'quantity': 1,
+                    'fromCart': false,
+                    'isTechOrder': true,
+                  };
+                  
+                  Get.toNamed('/delivery-point', arguments: {
+                    'role': 'tech_buyer',
+                    'productData': productData,
+                  });
                 },
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),

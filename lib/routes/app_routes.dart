@@ -22,6 +22,8 @@ import '../features/tech/views/tech_pickup_location_screen.dart';
 import '../features/tech/views/tech_delivery_status_screen.dart';
 import '../features/tech/views/tech_delivery_completed_screen.dart';
 import '../features/tech/views/tech_autopilot_pick_screen.dart';
+import '../features/tech/views/tech_buyer_status_screen.dart';
+import '../features/tech/views/tech_buyer_completed_screen.dart';
 
 class AppRoutes {
   static const String login = '/login'; // Маршрут для экрана авторизации
@@ -52,6 +54,9 @@ class AppRoutes {
       '/tech-delivery-status'; // Статус отправки заказа для техника
   static const String techDeliveryCompleted = '/tech-delivery-completed';
   static const String techAutopilotPick = '/tech-autopilot-pick';
+  static const String techBuyerStatus =
+      '/tech-buyer-status'; // Статус заказа для техника-покупателя
+  static const String techBuyerCompleted = '/tech-buyer-completed';
   static const String addEditProduct = '/add-edit-product';
 
   static final List<GetPage> pages = [
@@ -87,6 +92,12 @@ class AppRoutes {
       page: () => TechDeliveryCompletedScreen(),
     ),
     GetPage(name: techAutopilotPick, page: () => TechAutopilotPickScreen()),
+    GetPage(
+        name: techBuyerStatus, page: () => TechBuyerStatusScreen()),
+    GetPage(
+      name: techBuyerCompleted,
+      page: () => TechBuyerCompletedScreen(),
+    ),
     GetPage(
       name: addEditProduct,
       page: () => AddEditProductScreen(product: Get.arguments),

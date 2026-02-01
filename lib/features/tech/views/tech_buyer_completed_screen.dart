@@ -1,24 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../data/sources/api/flight_api.dart';
-import '../../../common/widgets/swipe_confirm_dialog.dart';
 import '../../../data/models/order_model.dart';
 import '../../../data/repositories/order_repository.dart';
 import '../../../data/repositories/order_history_repository.dart';
+import '../../../common/widgets/swipe_confirm_dialog.dart';
+import '../../../routes/app_routes.dart';
+import '../../../data/sources/api/flight_api.dart';
 
-class TechDeliveryCompletedScreen extends StatefulWidget {
-  const TechDeliveryCompletedScreen({Key? key}) : super(key: key);
+/// Экран завершения доставки для техника-покупателя
+class TechBuyerCompletedScreen extends StatefulWidget {
+  const TechBuyerCompletedScreen({Key? key}) : super(key: key);
 
   @override
-  State<TechDeliveryCompletedScreen> createState() =>
-      _TechDeliveryCompletedScreenState();
+  State<TechBuyerCompletedScreen> createState() =>
+      _TechBuyerCompletedScreenState();
 }
 
-class _TechDeliveryCompletedScreenState
-    extends State<TechDeliveryCompletedScreen> {
+class _TechBuyerCompletedScreenState extends State<TechBuyerCompletedScreen> {
   bool isDroneOpen = false;
   bool isOpeningDrone = false;
-  bool isSendingDrone = false;
+  bool isReceivingOrder = false;
   final OrderRepository _orderRepository = OrderRepository();
   final OrderHistoryRepository _historyRepository = OrderHistoryRepository();
   OrderModel? _orderData;
@@ -39,8 +40,9 @@ class _TechDeliveryCompletedScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Отправка товара'),
+        title: Text('Получение заказа'),
         backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
         centerTitle: true,
       ),
       body: SafeArea(
@@ -55,14 +57,30 @@ class _TechDeliveryCompletedScreenState
                 child: Image.asset(
                   'assets/images/drone/delivery.gif',
                   fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[200],
+                      child: Icon(Icons.local_shipping,
+                          size: 100, color: Colors.grey[400]),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 24),
               Text(
-                'Дрон готов доставить товар!',
+                'Дрон прибыл! Заберите ваш заказ',
                 style: Theme.of(context).textTheme.titleLarge,
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 8),
+              if (_orderData != null)
+                Text(
+                  'Заказ #${_orderData!.id}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
               const Spacer(),
               // Управление грузовым отсеком с индикатором
               Container(
@@ -161,27 +179,25 @@ class _TechDeliveryCompletedScreenState
                 ),
               ),
               const SizedBox(height: 24),
-              // Кнопка отправки дрона
+              // Кнопка подтверждения получения заказа
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: isSendingDrone
-                      ? null
-                      : () {
-                          SwipeConfirmDialog.show(
-                            context: context,
-                            title: 'Отправить дрон',
-                            message:
-                                'Вы уверены, что хотите отправить дрон на базу?',
-                            confirmText: 'Отправить',
-                            confirmColor: Colors.blue,
-                            icon: Icons.flight_takeoff,
-                            onConfirm: () {
-                              _sendDroneBack();
-                            },
-                          );
-                        },
-                  icon: isSendingDrone
+                  onPressed: () {
+                    SwipeConfirmDialog.show(
+                      context: context,
+                      title: 'Подтвердить получение',
+                      message:
+                          'Вы подтверждаете получение заказа? Заказ будет перемещен в историю.',
+                      confirmText: 'Подтвердить',
+                      confirmColor: Colors.blue,
+                      icon: Icons.check_circle,
+                      onConfirm: () {
+                        _confirmOrderReceived();
+                      },
+                    );
+                  },
+                  icon: isReceivingOrder
                       ? SizedBox(
                           width: 20,
                           height: 20,
@@ -191,15 +207,20 @@ class _TechDeliveryCompletedScreenState
                                 AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : Icon(Icons.flight_takeoff, size: 24),
+                      : Icon(Icons.check_circle, size: 24),
                   label: Text(
-                    isSendingDrone ? 'Отправляем...' : 'Отправить дрон',
+                    isReceivingOrder
+                        ? 'Обрабатываем...'
+                        : 'Подтвердить получение заказа',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: Colors.blue,
                     foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ),
@@ -280,21 +301,26 @@ class _TechDeliveryCompletedScreenState
     }
   }
 
-  void _sendDroneBack() async {
+  void _confirmOrderReceived() async {
     if (_orderData == null) {
       return;
     }
 
     setState(() {
-      isSendingDrone = true;
+      isReceivingOrder = true;
     });
 
     try {
       // Обновляем статус заказа на "delivered"
-      await _orderRepository.updateOrderStatus(
+      await _orderRepository
+          .updateOrderStatus(
         _orderData!.id.toString(),
         'delivered',
-      );
+      )
+          .catchError((error) {
+        print('❌ Ошибка при обновлении статуса заказа: $error');
+        return false;
+      });
 
       // Сохраняем заказ в локальную историю техника перед удалением
       try {
@@ -322,18 +348,23 @@ class _TechDeliveryCompletedScreenState
       }
 
       // Удаляем заказ с сервера — он исчезнет из списка заказов (API: DELETE /order/deleteorder/{orderId})
-      await _orderRepository.deleteOrder(_orderData!.id.toString());
+      await _orderRepository
+          .deleteOrder(_orderData!.id.toString())
+          .catchError((error) {
+        print('❌ Ошибка при удалении заказа: $error');
+        return false;
+      });
 
-      // Имитация задержки отправки
       await Future.delayed(Duration(milliseconds: 500));
-
-      Get.offAllNamed('/tech-home');
     } catch (e) {
-      print('❌ Неожиданная ошибка при отправке дрона: $e');
+      print('❌ Ошибка при подтверждении получения заказа: $e');
     } finally {
+      // Переход на главный экран техника
+      Get.offAllNamed(AppRoutes.techHome);
+
       if (mounted) {
         setState(() {
-          isSendingDrone = false;
+          isReceivingOrder = false;
         });
       }
     }

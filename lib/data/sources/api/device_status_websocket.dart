@@ -27,27 +27,44 @@ class DeviceStatusData {
   factory DeviceStatusData.fromJson(Map<String, dynamic> json) {
     DeviceStatus status;
     final dynamic data = json['data'];
-    final String statusStr = (json['status'] ??
-                json['state'] ??
-                json['connection'] ??
-                (data is Map<String, dynamic>
-                    ? data['status'] ?? data['state']
-                    : null))
-            ?.toString()
-            .toLowerCase() ??
-        'unknown';
-
-    // Сервер может присылать разные варианты статуса, включая опечатки
-    // Сначала проверяем "disconnected", чтобы не сработало на "connected"
-    if (statusStr.contains('disconnected') || statusStr.contains('нет связи')) {
-      status = DeviceStatus.disconnected;
-    } else if (statusStr.contains('connected') ||
-        statusStr.contains('на связи') ||
-        statusStr.contains('подключ') ||
-        statusStr.contains('конект')) {
-      status = DeviceStatus.connected;
+    
+    // Сначала проверяем поле 'online' (boolean), которое присылает сервер для дронбокса
+    if (json.containsKey('online')) {
+      final online = json['online'];
+      if (online is bool) {
+        status = online ? DeviceStatus.connected : DeviceStatus.disconnected;
+      } else if (online is String) {
+        final onlineStr = online.toLowerCase();
+        status = (onlineStr == 'true' || onlineStr == '1' || onlineStr == 'yes')
+            ? DeviceStatus.connected
+            : DeviceStatus.disconnected;
+      } else {
+        status = DeviceStatus.disconnected; // Убрали unknown, заменяем на disconnected
+      }
     } else {
-      status = DeviceStatus.unknown;
+      // Если поля 'online' нет, ищем в других полях
+      final String statusStr = (json['status'] ??
+                  json['state'] ??
+                  json['connection'] ??
+                  (data is Map<String, dynamic>
+                      ? data['status'] ?? data['state']
+                      : null))
+              ?.toString()
+              .toLowerCase() ??
+          'disconnected'; // Убрали 'unknown', заменяем на 'disconnected'
+
+      // Сервер может присылать разные варианты статуса, включая опечатки
+      // Сначала проверяем "disconnected", чтобы не сработало на "connected"
+      if (statusStr.contains('disconnected') || statusStr.contains('нет связи')) {
+        status = DeviceStatus.disconnected;
+      } else if (statusStr.contains('connected') ||
+          statusStr.contains('на связи') ||
+          statusStr.contains('подключ') ||
+          statusStr.contains('конект')) {
+        status = DeviceStatus.connected;
+      } else {
+        status = DeviceStatus.disconnected; // Убрали unknown, заменяем на disconnected
+      }
     }
 
     final String deviceName = (json['deviceName'] ??
@@ -279,6 +296,11 @@ class DeviceStatusWebSocket {
         // print('❌ Ошибка отправки запроса статуса: $e');
       }
     }
+  }
+
+  /// Публичный метод для запроса статуса устройства
+  void requestStatus() {
+    _requestStatus();
   }
 
   void _scheduleReconnect() {

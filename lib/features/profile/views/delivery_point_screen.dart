@@ -66,7 +66,6 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
   void initState() {
     super.initState();
     _loadSearchHistory();
-    _checkAndRequestPermissions(); // Проверяем разрешения на геолокацию при запуске экрана
 
     // Получаем аргументы из Get.arguments
     final arguments = Get.arguments;
@@ -85,16 +84,27 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
         final firstCartItem = cartItems.first as Map<String, dynamic>;
         // Устанавливаем флаг fromCart для товара
         firstCartItem['fromCart'] = true;
+        print('📦 Заказ из корзины, данные товара: $firstCartItem');
         setState(() {
           _productData = firstCartItem;
         });
       } else if (productData != null) {
         // Обновляем данные о товаре
+        print('📦 Получены данные о товаре при инициализации: $productData');
+        print('   Ключи: ${productData.keys.toList()}');
+        print('   ID товара: ${productData['id']}');
         setState(() {
           _productData = productData;
         });
+      } else {
+        print('⚠️ Данные о товаре не переданы при инициализации экрана');
       }
     }
+
+    // Проверяем разрешения на геолокацию после построения виджета
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndRequestPermissions();
+    });
   }
 
   @override
@@ -294,32 +304,39 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
 
   /// Проверка и запрос разрешений на геолокацию
   Future<void> _checkAndRequestPermissions() async {
-    bool serviceEnabled;
-    PermissionStatus permissionGranted;
+    try {
+      bool serviceEnabled;
+      PermissionStatus permissionGranted;
 
-    // Проверяем, включена ли служба GPS
-    serviceEnabled = await _location.serviceEnabled();
-    if (!serviceEnabled) {
-      serviceEnabled = await _location.requestService();
+      // Проверяем, включена ли служба GPS
+      serviceEnabled = await _location.serviceEnabled();
       if (!serviceEnabled) {
-        return;
+        serviceEnabled = await _location.requestService();
+        if (!serviceEnabled) {
+          print('⚠️ Служба GPS не включена');
+          return;
+        }
       }
-    }
 
-    // Проверяем, есть ли разрешение на доступ к геолокации
-    permissionGranted = await _location.hasPermission();
-    if (permissionGranted == PermissionStatus.denied) {
-      permissionGranted = await _location.requestPermission();
-      if (permissionGranted != PermissionStatus.granted &&
-          permissionGranted != PermissionStatus.grantedLimited) {
-        return;
+      // Проверяем, есть ли разрешение на доступ к геолокации
+      permissionGranted = await _location.hasPermission();
+      if (permissionGranted == PermissionStatus.denied) {
+        permissionGranted = await _location.requestPermission();
+        if (permissionGranted != PermissionStatus.granted &&
+            permissionGranted != PermissionStatus.grantedLimited) {
+          print('⚠️ Разрешение на геолокацию не предоставлено');
+          return;
+        }
       }
-    }
 
-    // После получения разрешений автоматически определяем местоположение
-    if (permissionGranted == PermissionStatus.granted ||
-        permissionGranted == PermissionStatus.grantedLimited) {
-      _getCurrentLocation();
+      // После получения разрешений автоматически определяем местоположение
+      if (permissionGranted == PermissionStatus.granted ||
+          permissionGranted == PermissionStatus.grantedLimited) {
+        print('✅ Разрешение на геолокацию получено, определяем местоположение...');
+        await _getCurrentLocation();
+      }
+    } catch (e) {
+      print('❌ Ошибка при проверке разрешений на геолокацию: $e');
     }
   }
 
@@ -354,20 +371,34 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
   /// Получение текущего местоположения пользователя
   Future<void> _getCurrentLocation() async {
     try {
+      print('📍 Начало получения текущего местоположения...');
       LocationData locationData = await _location.getLocation();
+      
+      if (locationData.latitude == null || locationData.longitude == null) {
+        print('⚠️ Координаты не получены');
+        return;
+      }
+      
       final LatLng newLocation =
           LatLng(locationData.latitude!, locationData.longitude!);
 
-      setState(() {
-        _currentPosition = newLocation;
-      });
+      print('✅ Получены координаты: ${newLocation.latitude}, ${newLocation.longitude}');
 
-      // Устанавливаем точку доставки без показа диалога
-      await _updateDeliveryPoint(newLocation, showDialog: false);
+      if (mounted) {
+        setState(() {
+          _currentPosition = newLocation;
+        });
 
-      // Перемещаем карту к текущему местоположению
-      _mapController.move(newLocation, 16.0);
-    } catch (e) {}
+        // Устанавливаем точку доставки без показа диалога
+        await _updateDeliveryPoint(newLocation, showDialog: false);
+
+        // Перемещаем карту к текущему местоположению
+        _mapController.move(newLocation, 16.0);
+        print('✅ Карта перемещена к текущему местоположению');
+      }
+    } catch (e) {
+      print('❌ Ошибка при получении текущего местоположения: $e');
+    }
   }
 
   /// Поиск местоположения по введенному адресу
@@ -483,14 +514,43 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
     double price = 0.0;
     bool isTechOrder = false;
 
+    print('📦 Данные о товаре при создании заказа:');
+    print('   _productData: $_productData');
+    
     if (_productData != null) {
       // Если есть данные о товаре, используем их
-      productId = _productData!['id'] ?? 1;
+      print('   Ключи в _productData: ${_productData!.keys.toList()}');
+      
+      // Проверяем разные варианты ключа для ID
+      final idValue = _productData!['id'] ?? 
+                      _productData!['productId'] ?? 
+                      _productData!['product_id'] ?? 
+                      1;
+      
+      // Преобразуем в int, если это не int
+      if (idValue is int) {
+        productId = idValue;
+      } else if (idValue is String) {
+        productId = int.tryParse(idValue) ?? 1;
+      } else if (idValue is double) {
+        productId = idValue.toInt();
+      } else {
+        productId = 1;
+      }
+      
       quantity = _productData!['quantity'] ?? 1;
       productName = _productData!['name'] ?? 'Товар';
       productImage = _productData!['image'] ?? '';
       price = (_productData!['price'] ?? 0.0).toDouble();
       isTechOrder = _productData!['isTechOrder'] ?? false;
+      
+      print('   Извлеченные данные:');
+      print('     productId: $productId');
+      print('     productName: $productName');
+      print('     price: $price');
+      print('     isTechOrder: $isTechOrder');
+    } else {
+      print('   ⚠️ _productData равен null, используются значения по умолчанию');
     }
 
     // Отправляем заказ на сервер
@@ -554,21 +614,33 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
 
     // Заказ оформлен
 
-    // Очищаем корзину если заказ был из корзины
-    if (_productData != null && _productData!['fromCart'] == true) {
+    // Очищаем корзину если заказ был из корзины (только для покупателя, не для техника)
+    if (_productData != null && 
+        _productData!['fromCart'] == true && 
+        role != 'tech_buyer' && 
+        role != 'technician' && 
+        !isTechOrder) {
       try {
-        final cartController = Get.find<CartController>();
-        cartController.clearCart();
+        if (Get.isRegistered<CartController>()) {
+          final cartController = Get.find<CartController>();
+          cartController.clearCart();
+          print('✅ Корзина очищена после заказа');
+        }
       } catch (e) {
+        print('⚠️ Не удалось очистить корзину: $e');
         // Игнорируем ошибки с корзиной
       }
     }
 
-    // Для техника показываем снекбар с кнопкой "Вызвать дрон"
-    if (role == 'technician' || isTechOrder) {
+    // Для техника-покупателя переходим на экран статусов покупателя
+    if (isTechOrder) {
+      // Техник заказывает как покупатель - используем статусы покупателя
+      Get.toNamed('/tech-buyer-status', arguments: orderModel);
+    } else if (role == 'technician' || role == 'tech') {
+      // Техник в роли техника - показываем снекбар с кнопкой "Вызвать дрон"
       _showDroneCallSnackBar(orderModel, address);
     } else {
-      // Сразу переходим на экран статусов доставки с данными заказа
+      // Обычный покупатель - переходим на экран статусов доставки
       Get.toNamed('/delivery-status', arguments: orderModel);
     }
   }

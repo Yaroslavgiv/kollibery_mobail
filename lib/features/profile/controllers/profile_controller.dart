@@ -263,7 +263,9 @@ class ProfileController extends GetxController {
   /// Получение ключа хранилища для профиля с учетом роли
   String _getProfileStorageKey() {
     final role = storage.read<String>('role') ?? 'buyer';
-    return 'userProfile_$role';
+    // Нормализуем роль техника: 'tech' и 'technician' используют один ключ
+    final normalizedRole = (role == 'tech' || role == 'technician') ? 'technician' : role;
+    return 'userProfile_$normalizedRole';
   }
 
   /// Сохранение данных профиля в локальное хранилище с учетом роли

@@ -43,5 +43,45 @@ class OrderHistoryRepository {
       print('❌ Ошибка при очистке истории заказов: $e');
     }
   }
+
+  /// Сохранение заказа в историю техника
+  /// Сохраняет только выполненные заказы (статус 'delivered')
+  /// Автоматически ограничивает историю до 5 последних заказов
+  Future<void> saveOrderToTechHistory(OrderModel order) async {
+    try {
+      // Сохраняем только выполненные заказы
+      if (order.status.toLowerCase() == 'delivered') {
+        await OrderHistoryService.addToTechHistory(order);
+        print('✅ Заказ #${order.id} сохранен в локальную историю техника (статус: delivered)');
+      } else {
+        print('ℹ️ Заказ #${order.id} не сохранен в историю техника (статус: ${order.status}, требуется: delivered)');
+      }
+    } catch (e) {
+      print('❌ Ошибка при сохранении заказа в историю техника: $e');
+    }
+  }
+
+  /// Получение истории заказов техника из локального хранилища
+  List<OrderModel> getTechOrderHistory() {
+    try {
+      // Используем OrderHistoryService для получения истории техника
+      final history = OrderHistoryService.getTechHistory();
+      print('📥 Загружено ${history.length} заказов из локальной истории техника');
+      return history;
+    } catch (e) {
+      print('❌ Ошибка при чтении истории заказов техника: $e');
+      return [];
+    }
+  }
+
+  /// Очистка истории заказов техника
+  Future<void> clearTechHistory() async {
+    try {
+      await OrderHistoryService.clearTechHistory();
+      print('✅ История заказов техника очищена');
+    } catch (e) {
+      print('❌ Ошибка при очистке истории заказов техника: $e');
+    }
+  }
 }
 

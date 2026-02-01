@@ -511,8 +511,25 @@ class ProductApi {
         } else if (response.statusCode == 404) {
           message = 'Товар не найден.';
         } else if (response.statusCode == 500) {
-          message =
-              'Ошибка на сервере (500). Проверьте, что товар не используется в заказах, или обратитесь к администратору.';
+          // Пытаемся извлечь сообщение из ответа сервера
+          if (response.body.isNotEmpty) {
+            try {
+              final err = jsonDecode(response.body);
+              if (err is Map && err.containsKey('message')) {
+                message = err['message']?.toString() ??
+                    'Ошибка на сервере. Товар может быть использован в активных заказах.';
+              } else {
+                message =
+                    'Ошибка на сервере. Товар может быть использован в активных заказах.';
+              }
+            } catch (_) {
+              message =
+                  'Ошибка на сервере. Товар может быть использован в активных заказах.';
+            }
+          } else {
+            message =
+                'Ошибка на сервере. Товар может быть использован в активных заказах.';
+          }
         } else if (response.body.isNotEmpty) {
           try {
             final err = jsonDecode(response.body);
@@ -525,7 +542,12 @@ class ProductApi {
       }
     } catch (e) {
       print('❌ Исключение при удалении товара: $e');
-      throw Exception('Ошибка удаления товара: $e');
+      // Если это уже наше Exception с сообщением, просто пробрасываем его
+      if (e is Exception && e.toString().contains('Ошибка')) {
+        rethrow;
+      }
+      // Иначе создаем новое исключение
+      throw Exception('Ошибка удаления товара: ${e.toString()}');
     }
   }
 }

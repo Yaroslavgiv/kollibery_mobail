@@ -73,12 +73,16 @@ class SellerProductCard extends StatelessWidget {
         }
       } catch (e) {
         if (context.mounted) {
+          String errorMessage = 'Ошибка удаления товара';
+          if (e is Exception) {
+            final message = e.toString().replaceFirst('Exception: ', '');
+            errorMessage = message.isNotEmpty ? message : errorMessage;
+          }
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(e is Exception
-                  ? e.toString().replaceFirst('Exception: ', '')
-                  : 'Ошибка удаления'),
+              content: Text(errorMessage),
               backgroundColor: Colors.red,
+              duration: Duration(seconds: 4),
             ),
           );
         }
