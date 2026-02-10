@@ -217,7 +217,7 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                 children: [
                   _buildActionButton(
                     text: 'ОТКРЫТЬ',
-                    isActive: !isRoofOpen && !isControllingRoof,
+                    isActive: true, // Разблокирована
                     activeColor: Colors.green,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -247,7 +247,7 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                   SizedBox(width: 8),
                   _buildActionButton(
                     text: 'ЗАКРЫТЬ',
-                    isActive: isRoofOpen && !isControllingRoof,
+                    isActive: true, // Разблокирована
                     activeColor: Colors.orange,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -288,7 +288,7 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                 children: [
                   _buildActionButton(
                     text: 'ЦЕНТР',
-                    isActive: !isPositionCenter && !isControllingPosition,
+                    isActive: true, // Разблокирована
                     activeColor: Colors.green,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -319,7 +319,7 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                   SizedBox(width: 8),
                   _buildActionButton(
                     text: 'КРАЙ',
-                    isActive: isPositionCenter && !isControllingPosition,
+                    isActive: true, // Разблокирована
                     activeColor: Colors.orange,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -361,7 +361,7 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                 children: [
                   _buildActionButton(
                     text: 'ВВЕРХ',
-                    isActive: !isTableUp && !isControllingTable,
+                    isActive: true, // Разблокирована
                     activeColor: Colors.green,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -391,7 +391,7 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                   SizedBox(width: 8),
                   _buildActionButton(
                     text: 'ВНИЗ',
-                    isActive: isTableUp && !isControllingTable,
+                    isActive: true, // Разблокирована
                     activeColor: Colors.orange,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -433,7 +433,7 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                 children: [
                   _buildActionButton(
                     text: 'ОТКРЫТЬ',
-                    isActive: !isHatchOpen && !isControllingHatch,
+                    isActive: true, // Разблокирована
                     activeColor: Colors.green,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -463,7 +463,7 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                   SizedBox(width: 8),
                   _buildActionButton(
                     text: 'ЗАКРЫТЬ',
-                    isActive: isHatchOpen && !isControllingHatch,
+                    isActive: true, // Разблокирована
                     activeColor: Colors.orange,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -501,71 +501,190 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
             _buildControlBlock(
               title: 'Аккум Дрон',
               status: batteryStates[0],
-              actionButtons: Row(
+              actionButtons: Column(
                 children: [
-                  _buildActionButton(
-                    text: 'УСТАНОВИТЬ',
-                    isActive:
-                        batteryStates[0] == 'НЕТ' && !isControllingDroneBattery,
-                    activeColor: Colors.green,
-                    onPressed: () async {
-                      SwipeConfirmDialog.show(
-                        context: context,
-                        title: 'Установить батарею',
-                        message: 'Установить батарею дрона?',
-                        confirmText: 'Установить',
-                        confirmColor: Colors.green,
-                        icon: Icons.battery_charging_full,
-                        onConfirm: () async {
-                          setState(() => isControllingDroneBattery = true);
-                          try {
-                            final response =
-                                await FlightApi.controlDroneBattery(true);
-                            if (response.statusCode >= 200 &&
-                                response.statusCode < 300) {
-                              setState(() => batteryStates[0] = 'УСТАНОВЛЕН');
-                            }
-                          } catch (e) {
-                          } finally {
-                            if (mounted)
-                              setState(() => isControllingDroneBattery = false);
+                  Row(
+                    children: [
+                      _buildActionButton(
+                        text: 'УСТАНОВИТЬ',
+                        isActive: true, // Разблокирована
+                        activeColor: Colors.green,
+                        onPressed: () async {
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text(
+                                  'Установить батарею',
+                                  style: TextStyle(color: Colors.black),
+                                ),
+                                content: Text(
+                                  'Установить батарею дрона?',
+                                  style: TextStyle(color: Colors.black),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(),
+                                    child: Text(
+                                      'Отмена',
+                                      style: TextStyle(color: Colors.grey[600]),
+                                    ),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      Navigator.of(context).pop();
+                                      setState(
+                                          () => isControllingDroneBattery = true);
+                                      try {
+                                        final response =
+                                            await FlightApi.controlDroneBattery(
+                                                true);
+                                        if (response.statusCode >= 200 &&
+                                            response.statusCode < 300) {
+                                          setState(() =>
+                                              batteryStates[0] = 'УСТАНОВЛЕН');
+                                        }
+                                      } catch (e) {
+                                      } finally {
+                                        if (mounted)
+                                          setState(() =>
+                                              isControllingDroneBattery = false);
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: Text('Установить'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      SizedBox(width: 8),
+                      _buildActionButton(
+                        text: 'Снять',
+                        isActive: true, // Разблокирована
+                        activeColor: Colors.orange,
+                        onPressed: () async {
+                          SwipeConfirmDialog.show(
+                            context: context,
+                            title: 'Снять батарею',
+                            message: 'Снять батарею дрона?',
+                            confirmText: 'Снять',
+                            confirmColor: Colors.orange,
+                            icon: Icons.battery_std,
+                            onConfirm: () async {
+                              setState(() => isControllingDroneBattery = true);
+                              try {
+                                final response =
+                                    await FlightApi.controlDroneBattery(false);
+                                if (response.statusCode >= 200 &&
+                                    response.statusCode < 300) {
+                                  setState(() => batteryStates[0] = 'НЕТ');
+                                }
+                              } catch (e) {
+                              } finally {
+                                if (mounted)
+                                  setState(() => isControllingDroneBattery = false);
+                              }
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  if (batteryStates[0] == 'УСТАНОВЛЕН' ||
+                      batteryStates[0] == 'ЗАРЯД') ...[
+                    SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final isCharging = batteryStates[0] == 'ЗАРЯД';
+                          if (isCharging) {
+                            // Отключить заряд
+                            SwipeConfirmDialog.show(
+                              context: context,
+                              title: 'Отключить заряд батареи дрона',
+                              message: 'Отключить зарядку батареи дрона?',
+                              confirmText: 'Отключить',
+                              confirmColor: Colors.orange,
+                              icon: Icons.battery_charging_full,
+                              onConfirm: () async {
+                                setState(() => isControllingDroneBattery = true);
+                                try {
+                                  final response = await FlightApi
+                                      .controlDroneBatteryCharger(
+                                    isCharging: false,
+                                  );
+                                  if (response.statusCode >= 200 &&
+                                      response.statusCode < 300) {
+                                    setState(() => batteryStates[0] = 'УСТАНОВЛЕН');
+                                  }
+                                } catch (e) {
+                                } finally {
+                                  if (mounted)
+                                    setState(() =>
+                                        isControllingDroneBattery = false);
+                                }
+                              },
+                            );
+                          } else {
+                            // Начать заряд
+                            SwipeConfirmDialog.show(
+                              context: context,
+                              title: 'Зарядить батарею дрона',
+                              message: 'Начать зарядку батареи дрона?',
+                              confirmText: 'Зарядить',
+                              confirmColor: Colors.green,
+                              icon: Icons.battery_charging_full,
+                              onConfirm: () async {
+                                setState(() => isControllingDroneBattery = true);
+                                try {
+                                  final response = await FlightApi
+                                      .controlDroneBatteryCharger(
+                                    isCharging: true,
+                                  );
+                                  if (response.statusCode >= 200 &&
+                                      response.statusCode < 300) {
+                                    setState(() => batteryStates[0] = 'ЗАРЯД');
+                                  }
+                                } catch (e) {
+                                } finally {
+                                  if (mounted)
+                                    setState(() =>
+                                        isControllingDroneBattery = false);
+                                }
+                              },
+                            );
                           }
                         },
-                      );
-                    },
-                  ),
-                  SizedBox(width: 8),
-                  _buildActionButton(
-                    text: 'Снять',
-                    isActive: batteryStates[0] == 'УСТАНОВЛЕН' &&
-                        !isControllingDroneBattery,
-                    activeColor: Colors.orange,
-                    onPressed: () async {
-                      SwipeConfirmDialog.show(
-                        context: context,
-                        title: 'Снять батарею',
-                        message: 'Снять батарею дрона?',
-                        confirmText: 'Снять',
-                        confirmColor: Colors.orange,
-                        icon: Icons.battery_std,
-                        onConfirm: () async {
-                          setState(() => isControllingDroneBattery = true);
-                          try {
-                            final response =
-                                await FlightApi.controlDroneBattery(false);
-                            if (response.statusCode >= 200 &&
-                                response.statusCode < 300) {
-                              setState(() => batteryStates[0] = 'НЕТ');
-                            }
-                          } catch (e) {
-                          } finally {
-                            if (mounted)
-                              setState(() => isControllingDroneBattery = false);
-                          }
-                        },
-                      );
-                    },
-                  ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: batteryStates[0] == 'ЗАРЯД'
+                              ? Colors.orange
+                              : Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 2,
+                        ),
+                        child: Text(
+                          batteryStates[0] == 'ЗАРЯД'
+                              ? 'ОТКЛ. ЗАРЯД'
+                              : 'ЗАРЯД',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -576,8 +695,6 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
             ...List.generate(3, (index) {
               final batteryNum = index + 1;
               final batteryState = batteryStates[batteryNum];
-              final isInstalled =
-                  batteryState == 'УСТАНОВЛЕН' || batteryState == 'ЗАРЯД';
               final isCharging = batteryState == 'ЗАРЯД';
 
               return Column(
@@ -591,8 +708,7 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                           children: [
                             _buildActionButton(
                               text: 'УСТАНОВИТЬ',
-                              isActive: batteryState == 'НЕТ' &&
-                                  !isControllingBatteries[index],
+                              isActive: true, // Разблокирована
                               activeColor: Colors.green,
                               onPressed: () async {
                                 SwipeConfirmDialog.show(
@@ -609,7 +725,7 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                                       final response =
                                           await FlightApi.controlBoxBattery(
                                         batteryNumber: batteryNum,
-                                        action: 'install',
+                                        isInstall: true,
                                       );
                                       if (response.statusCode >= 200 &&
                                           response.statusCode < 300) {
@@ -631,8 +747,7 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                             SizedBox(width: 8),
                             _buildActionButton(
                               text: 'Снять',
-                              isActive:
-                                  isInstalled && !isControllingBatteries[index],
+                              isActive: true, // Разблокирована
                               activeColor: Colors.orange,
                               onPressed: () async {
                                 SwipeConfirmDialog.show(
@@ -649,7 +764,7 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                                       final response =
                                           await FlightApi.controlBoxBattery(
                                         batteryNumber: batteryNum,
-                                        action: 'remove',
+                                        isInstall: false,
                                       );
                                       if (response.statusCode >= 200 &&
                                           response.statusCode < 300) {
@@ -669,107 +784,100 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                             ),
                           ],
                         ),
-                        if (isInstalled) ...[
-                          SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: isControllingBatteries[index]
-                                  ? null
-                                  : () async {
-                                      if (isCharging) {
-                                        // Отключить заряд
-                                        SwipeConfirmDialog.show(
-                                          context: context,
-                                          title:
-                                              'Отключить заряд батареи $batteryNum',
-                                          message:
-                                              'Отключить зарядку батареи $batteryNum?',
-                                          confirmText: 'Отключить',
-                                          confirmColor: Colors.orange,
-                                          icon: Icons.battery_charging_full,
-                                          onConfirm: () async {
-                                            setState(() =>
-                                                isControllingBatteries[index] =
-                                                    true);
-                                            try {
-                                              final response = await FlightApi
-                                                  .controlBoxBattery(
-                                                batteryNumber: batteryNum,
-                                                action: 'discharge',
-                                              );
-                                              if (response.statusCode >= 200 &&
-                                                  response.statusCode < 300) {
-                                                setState(() =>
-                                                    batteryStates[batteryNum] =
-                                                        'УСТАНОВЛЕН');
-                                              }
-                                            } catch (e) {
-                                            } finally {
-                                              if (mounted)
-                                                setState(() =>
-                                                    isControllingBatteries[
-                                                        index] = false);
-                                            }
-                                          },
-                                        );
-                                      } else {
-                                        // Начать заряд
-                                        SwipeConfirmDialog.show(
-                                          context: context,
-                                          title: 'Зарядить батарею $batteryNum',
-                                          message:
-                                              'Начать зарядку батареи $batteryNum?',
-                                          confirmText: 'Зарядить',
-                                          confirmColor: Colors.green,
-                                          icon: Icons.battery_charging_full,
-                                          onConfirm: () async {
-                                            setState(() =>
-                                                isControllingBatteries[index] =
-                                                    true);
-                                            try {
-                                              final response = await FlightApi
-                                                  .controlBoxBattery(
-                                                batteryNumber: batteryNum,
-                                                action: 'charge',
-                                              );
-                                              if (response.statusCode >= 200 &&
-                                                  response.statusCode < 300) {
-                                                setState(() =>
-                                                    batteryStates[batteryNum] =
-                                                        'ЗАРЯД');
-                                              }
-                                            } catch (e) {
-                                            } finally {
-                                              if (mounted)
-                                                setState(() =>
-                                                    isControllingBatteries[
-                                                        index] = false);
-                                            }
-                                          },
-                                        );
+                        SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              if (isCharging) {
+                                // Отключить заряд
+                                SwipeConfirmDialog.show(
+                                  context: context,
+                                  title:
+                                      'Отключить заряд батареи $batteryNum',
+                                  message:
+                                      'Отключить зарядку батареи $batteryNum?',
+                                  confirmText: 'Отключить',
+                                  confirmColor: Colors.orange,
+                                  icon: Icons.battery_charging_full,
+                                  onConfirm: () async {
+                                    setState(() =>
+                                        isControllingBatteries[index] = true);
+                                    try {
+                                      final response = await FlightApi
+                                          .controlBoxBatteryCharger(
+                                        batteryNumber: batteryNum,
+                                        isCharging: false,
+                                      );
+                                      if (response.statusCode >= 200 &&
+                                          response.statusCode < 300) {
+                                        setState(() =>
+                                            batteryStates[batteryNum] =
+                                                'УСТАНОВЛЕН');
                                       }
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    isCharging ? Colors.orange : Colors.green,
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                elevation: 2,
+                                    } catch (e) {
+                                    } finally {
+                                      if (mounted)
+                                        setState(() =>
+                                            isControllingBatteries[index] =
+                                                false);
+                                    }
+                                  },
+                                );
+                              } else {
+                                // Начать заряд
+                                SwipeConfirmDialog.show(
+                                  context: context,
+                                  title: 'Зарядить батарею $batteryNum',
+                                  message:
+                                      'Начать зарядку батареи $batteryNum?',
+                                  confirmText: 'Зарядить',
+                                  confirmColor: Colors.green,
+                                  icon: Icons.battery_charging_full,
+                                  onConfirm: () async {
+                                    setState(() =>
+                                        isControllingBatteries[index] = true);
+                                    try {
+                                      final response = await FlightApi
+                                          .controlBoxBatteryCharger(
+                                        batteryNumber: batteryNum,
+                                        isCharging: true,
+                                      );
+                                      if (response.statusCode >= 200 &&
+                                          response.statusCode < 300) {
+                                        setState(() =>
+                                            batteryStates[batteryNum] = 'ЗАРЯД');
+                                      }
+                                    } catch (e) {
+                                    } finally {
+                                      if (mounted)
+                                        setState(() =>
+                                            isControllingBatteries[index] =
+                                                false);
+                                    }
+                                  },
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  isCharging ? Colors.orange : Colors.green,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text(
-                                isCharging ? 'ОТКЛ. ЗАРЯД' : 'ЗАРЯД',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              elevation: 2,
+                            ),
+                            child: Text(
+                              isCharging ? 'ОТКЛ. ЗАРЯД' : 'ЗАРЯД',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
-                        ],
+                        ),
                       ],
                     ),
                   ),
@@ -780,28 +888,26 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
 
             // Кнопка стоп
             ElevatedButton.icon(
-              onPressed: isStopping
-                  ? null
-                  : () {
-                      SwipeConfirmDialog.show(
-                        context: context,
-                        title: 'Стоп дронбокса',
-                        message:
-                            'Вы уверены, что хотите остановить все операции дронбокса?',
-                        confirmText: 'Остановить',
-                        confirmColor: Colors.red,
-                        icon: Icons.stop,
-                        onConfirm: () async {
-                          setState(() => isStopping = true);
-                          try {
-                            await FlightApi.droneboxStop();
-                          } catch (e) {
-                          } finally {
-                            if (mounted) setState(() => isStopping = false);
-                          }
-                        },
-                      );
-                    },
+              onPressed: () {
+                SwipeConfirmDialog.show(
+                  context: context,
+                  title: 'Стоп дронбокса',
+                  message:
+                      'Вы уверены, что хотите остановить все операции дронбокса?',
+                  confirmText: 'Остановить',
+                  confirmColor: Colors.red,
+                  icon: Icons.stop,
+                  onConfirm: () async {
+                    setState(() => isStopping = true);
+                    try {
+                      await FlightApi.droneboxStop();
+                    } catch (e) {
+                    } finally {
+                      if (mounted) setState(() => isStopping = false);
+                    }
+                  },
+                );
+              },
               icon: isStopping
                   ? SizedBox(
                       width: 24,

@@ -6,6 +6,7 @@ import "package:get/get.dart";
 import "package:location/location.dart";
 import "package:http/http.dart" as http;
 import "../../../data/models/order_model.dart";
+import "../../../data/sources/api/flight_api.dart";
 
 /// Экран выбора точки отправки заказа для продавца
 class SellerPickupLocationScreen extends StatefulWidget {
@@ -139,13 +140,50 @@ class _SellerPickupLocationScreenState
     }
   }
 
-  void _confirmPickupLocation() {
+  Future<void> _confirmPickupLocation() async {
     if (_pickupMarker == null) {
       return;
     }
-    print(
-        '✅ Переход на экран статуса заказа с данными: ${widget.orderData.id}');
-    Get.toNamed("/seller-order-status", arguments: widget.orderData);
+
+    // Показываем индикатор загрузки
+    setState(() => _isLoading = true);
+
+    try {
+      // Отправляем геолокацию на сервер через API
+      final response = await FlightApi.confirmNeoLocation(
+        orderId: widget.orderData.id,
+        latitude: _pickupMarker!.point.latitude,
+        longitude: _pickupMarker!.point.longitude,
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        print('✅ Геолокация успешно отправлена на сервер');
+        print('✅ Переход на экран статуса заказа с данными: ${widget.orderData.id}');
+        Get.toNamed("/seller-order-status", arguments: widget.orderData);
+      } else {
+        print('❌ Ошибка отправки геолокации: ${response.statusCode}');
+        print('Response: ${response.body}');
+        // Показываем ошибку пользователю
+        Get.snackbar(
+          'Ошибка',
+          'Не удалось отправить геолокацию. Попробуйте еще раз.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      print('❌ Исключение при отправке геолокации: $e');
+      Get.snackbar(
+        'Ошибка',
+        'Произошла ошибка при отправке геолокации: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override

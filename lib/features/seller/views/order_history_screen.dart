@@ -117,9 +117,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   }
 
   void _showOrderDetails(BuildContext context, OrderModel order) {
-    // Алерт-диалоги отключены по требованию
-    return;
-    /*
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -242,7 +239,6 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         ],
       ),
     );
-    */
   }
 
   Future<void> _clearHistory() async {

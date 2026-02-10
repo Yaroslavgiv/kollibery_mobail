@@ -65,8 +65,26 @@ class OrderApi {
         headers: headers,
       );
 
+      // 🔍 Подробное логирование ответа от бэкенда
+      print('=== ОТВЕТ БЭКЕНДА ПРИ ПОЛУЧЕНИИ СПИСКА ЗАКАЗОВ ===');
+      print('URL: $ORDERS_URL');
+      print('Status Code: ${response.statusCode}');
+      print('Response Body raw: ${response.body}');
+      print('=== КОНЕЦ СЫРОГО ОТВЕТА ДЛЯ СПИСКА ЗАКАЗОВ ===');
+
       if (response.statusCode == 200) {
         final List ordersData = jsonDecode(response.body);
+        print('📦 Распарсили заказы из бэкенда: всего ${ordersData.length}');
+        for (var i = 0; i < ordersData.length; i++) {
+          final o = ordersData[i];
+          if (o is Map<String, dynamic>) {
+            print(
+                '   ${i + 1}. id=${o['id']} (${o['id']?.runtimeType}), productId=${o['productId']} (${o['productId']?.runtimeType}), status=${o['status']}');
+          } else {
+            print('   ${i + 1}. ❓ Неверный формат элемента: ${o.runtimeType}');
+          }
+        }
+
         final List<Map<String, dynamic>> enrichedOrders = [];
 
         // Загружаем все товары один раз и строим карту по id

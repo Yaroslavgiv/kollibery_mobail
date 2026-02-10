@@ -188,99 +188,34 @@ class FlightApi {
   }
 
   // Новая функция для тестового взлёта/посадки на заданную высоту
+  // Отправляет только один запрос без повторных попыток
   static Future<http.Response> testSystemCheck({
     required bool isActive,
     required int distance,
   }) async {
     final token = box.read('token');
 
-    final Map<String, String> headersAuth = {};
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
     if (token != null) {
-      headersAuth['Authorization'] = 'Bearer $token';
+      headers['Authorization'] = 'Bearer $token';
     }
-    final Map<String, String> headersNoAuth = {};
 
-    final uriTest = Uri.parse(
+    final uri = Uri.parse(
         '${API_BASE_URL}/test/systemcheck?isActive=$isActive&distance=$distance');
-    http.Response resp;
-
-    // Attempt 1: POST with Authorization (если есть)
-    print('POST $uriTest');
-    print('Headers: $headersAuth');
-    resp = await http.post(uriTest, headers: headersAuth);
-    print('Attempt#1 status: ${resp.statusCode}');
-
-    bool shouldRetry = resp.statusCode < 200 || resp.statusCode >= 300;
-    if (shouldRetry) {
-      // Attempt 2: POST без Authorization
-      print('Retry Attempt#2: POST (no auth) $uriTest');
-      resp = await http.post(uriTest, headers: headersNoAuth);
-      print('Attempt#2 status: ${resp.statusCode}');
-    }
-
-    shouldRetry = resp.statusCode < 200 || resp.statusCode >= 300;
-    if (shouldRetry) {
-      // Attempt 3: GET на тот же эндпоинт
-      print('Retry Attempt#3: GET $uriTest');
-      resp = await http.get(uriTest, headers: headersAuth);
-      print('Attempt#3 status: ${resp.statusCode}');
-    }
-
-    shouldRetry = resp.statusCode < 200 || resp.statusCode >= 300;
-    if (shouldRetry) {
-      // Attempt 4: запасной маршрут /flight/systemcheck
-      final uriFlight = Uri.parse(
-          '${API_BASE_URL}/flight/systemcheck?isActive=$isActive&distance=$distance');
-      print('Retry Attempt#4: POST $uriFlight');
-      resp = await http.post(uriFlight, headers: headersAuth);
-      print('Attempt#4 status: ${resp.statusCode}');
-    }
-
-    shouldRetry = resp.statusCode < 200 || resp.statusCode >= 300;
-    if (shouldRetry) {
-      // Attempt 5: POST form-urlencoded body на /test/systemcheck
-      final uriForm = Uri.parse('${API_BASE_URL}/test/systemcheck');
-      final Map<String, String> headersForm = {
-        ...headersAuth,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
-      final bodyForm = {
-        'isActive': isActive.toString(),
-        'distance': distance.toString(),
-      };
-      print('Retry Attempt#5: POST form $uriForm');
-      resp = await http.post(uriForm, headers: headersForm, body: bodyForm);
-      print('Attempt#5 status: ${resp.statusCode}');
-    }
-
-    shouldRetry = resp.statusCode < 200 || resp.statusCode >= 300;
-    if (shouldRetry) {
-      // Attempt 6: POST JSON body на /test/systemcheck
-      final uriJson = Uri.parse('${API_BASE_URL}/test/systemcheck');
-      final Map<String, String> headersJson = {
-        ...headersAuth,
-        'Content-Type': 'application/json',
-      };
-      final bodyJson = jsonEncode({
-        'isActive': isActive,
-        'distance': distance,
-      });
-      print('Retry Attempt#6: POST json $uriJson');
-      resp = await http.post(uriJson, headers: headersJson, body: bodyJson);
-      print('Attempt#6 status: ${resp.statusCode}');
-    }
-
-    shouldRetry = resp.statusCode < 200 || resp.statusCode >= 300;
-    if (shouldRetry) {
-      // Attempt 7: POST с косой чертой
-      final uriSlash = Uri.parse(
-          '${API_BASE_URL}/test/systemcheck/?isActive=$isActive&distance=$distance');
-      print('Retry Attempt#7: POST (trailing slash) $uriSlash');
-      resp = await http.post(uriSlash, headers: headersAuth);
-      print('Attempt#7 status: ${resp.statusCode}');
-    }
-
-    return resp;
+    
+    print('=== ВЗЛЁТ/ПОСАДКА ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    print('isActive: $isActive, distance: $distance');
+    
+    final response = await http.post(uri, headers: headers);
+    
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    
+    return response;
   }
 
   // Тестирование подсветки дрона: colorNumber (0-выкл, 1-зелёный, 2-красный)
@@ -538,12 +473,12 @@ class FlightApi {
     return response;
   }
 
-  // Управление батареей дронбокса (1-3)
-  // API: POST /api/dron-box/battery{batteryNumber} (или /dronebox/battery{batteryNumber})
-  // Body: строка с действием ('install', 'remove', 'charge', 'discharge')
+  // Управление батареей дронбокса (1-3) - установка/снятие
+  // API: POST /api/dron-box/battery{batteryNumber}
+  // Body: boolean (true - установить, false - снять)
   static Future<http.Response> controlBoxBattery({
     required int batteryNumber, // 1, 2, или 3
-    required String action, // 'install', 'remove', 'charge', 'discharge'
+    required bool isInstall, // true - установить, false - снять
   }) async {
     final token = box.read('token');
     final Map<String, String> headers = {
@@ -553,8 +488,59 @@ class FlightApi {
       headers['Authorization'] = 'Bearer $token';
     }
     final uri = Uri.parse('${API_BASE_URL}/api/dron-box/battery$batteryNumber');
-    final body = jsonEncode(action);
-    print('=== УПРАВЛЕНИЕ БАТАРЕЕЙ $batteryNumber ===');
+    final body = jsonEncode(isInstall);
+    print('=== УПРАВЛЕНИЕ БАТАРЕЕЙ $batteryNumber (установка/снятие) ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    print('Body: $body');
+    final response = await http.post(uri, headers: headers, body: body);
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    return response;
+  }
+
+  // Управление зарядкой батареи дрона в дронбоксе
+  // API: POST /api/dron-box/dronebattery_charger
+  // Body: boolean (true - включить заряд, false - выключить заряд)
+  static Future<http.Response> controlDroneBatteryCharger({
+    required bool isCharging, // true - включить заряд, false - выключить заряд
+  }) async {
+    final token = box.read('token');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final uri = Uri.parse('${API_BASE_URL}/api/dron-box/dronebattery_charger');
+    final body = jsonEncode(isCharging);
+    print('=== УПРАВЛЕНИЕ ЗАРЯДКОЙ БАТАРЕИ ДРОНА ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    print('Body: $body');
+    final response = await http.post(uri, headers: headers, body: body);
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    return response;
+  }
+
+  // Управление зарядкой батареи дронбокса (1-3)
+  // API: POST /api/dron-box/battery{batteryNumber}_charger
+  // Body: boolean (true - включить заряд, false - выключить заряд)
+  static Future<http.Response> controlBoxBatteryCharger({
+    required int batteryNumber, // 1, 2, или 3
+    required bool isCharging, // true - включить заряд, false - выключить заряд
+  }) async {
+    final token = box.read('token');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final uri = Uri.parse('${API_BASE_URL}/api/dron-box/battery${batteryNumber}_charger');
+    final body = jsonEncode(isCharging);
+    print('=== УПРАВЛЕНИЕ ЗАРЯДКОЙ БАТАРЕИ $batteryNumber ===');
     print('POST $uri');
     print('Headers: $headers');
     print('Body: $body');
@@ -565,6 +551,8 @@ class FlightApi {
   }
 
   // Стоп для дронбокса
+  // API: POST /api/dron-box/stop
+  // Body: boolean (true - остановить)
   static Future<http.Response> droneboxStop() async {
     final token = box.read('token');
     final Map<String, String> headers = {
@@ -573,11 +561,13 @@ class FlightApi {
     if (token != null) {
       headers['Authorization'] = 'Bearer $token';
     }
-    final uri = Uri.parse('${API_BASE_URL}/dronebox/stop');
+    final uri = Uri.parse('${API_BASE_URL}/api/dron-box/stop');
+    final body = jsonEncode(true); // API требует true в body
     print('=== СТОП ДРОНБОКСА ===');
     print('POST $uri');
     print('Headers: $headers');
-    final response = await http.post(uri, headers: headers);
+    print('Body: $body');
+    final response = await http.post(uri, headers: headers, body: body);
     print('Status Code: ${response.statusCode}');
     print('Response Body: ${response.body}');
     return response;
@@ -656,6 +646,48 @@ class FlightApi {
     final response = await http.post(uri, headers: headers);
     print('Status Code: ${response.statusCode}');
     print('Response Body: ${response.body}');
+    return response;
+  }
+
+  // Подтверждение геолокации продавца при вызове дрона
+  // API: POST /flight/confirmneolocation?orderId={orderId}
+  // Body: {"latitude": double, "longitude": double, "altitude": 0}
+  static Future<http.Response> confirmNeoLocation({
+    required int orderId,
+    required double latitude,
+    required double longitude,
+  }) async {
+    final token = box.read('token');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+
+    final uri = Uri.parse('${API_BASE_URL}/flight/confirmneolocation?orderId=$orderId');
+    final body = jsonEncode({
+      'latitude': latitude,
+      'longitude': longitude,
+      'altitude': 0, // Всегда 0 согласно документации
+    });
+
+    print('=== ПОДТВЕРЖДЕНИЕ ГЕОЛОКАЦИИ ПРОДАВЦА ===');
+    print('POST $uri');
+    print('Headers: $headers');
+    print('Body: $body');
+    print('OrderId: $orderId');
+    print('Latitude: $latitude, Longitude: $longitude');
+
+    final response = await http.post(
+      uri,
+      headers: headers,
+      body: body,
+    );
+
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+
     return response;
   }
 }

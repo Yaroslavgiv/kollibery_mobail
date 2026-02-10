@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:http/http.dart' as http;
 import '../../../data/sources/api/flight_api.dart';
 import '../../../routes/app_routes.dart';
 import '../../../common/widgets/swipe_confirm_dialog.dart';
@@ -89,6 +90,49 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
           actionButtons,
         ],
       ),
+    );
+  }
+
+  /// Показывает диалог выбора высоты
+  void _showHeightSelectionDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Выберите высоту',
+            style: TextStyle(color: Colors.black),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(5, (index) {
+              final height = index + 1;
+              return ListTile(
+                title: Text(
+                  '$height м',
+                  style: TextStyle(color: Colors.black),
+                ),
+                selected: selectedDistance == height,
+                onTap: () {
+                  setState(() {
+                    selectedDistance = height;
+                  });
+                  Navigator.of(context).pop();
+                },
+              );
+            }),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Отмена',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -296,7 +340,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                           setState(() => isControllingBox = true);
                           try {
                             // Используем правильный API метод для грузового бокса дрона
-                            // POST /flight/openbox?isActive=true
+                            // POST /flight/openbox с boolean в body (true - открыть)
                             final response = await FlightApi.openDroneBox(true);
                             if (response.statusCode >= 200 &&
                                 response.statusCode < 300) {
@@ -328,7 +372,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                           setState(() => isControllingBox = true);
                           try {
                             // Используем правильный API метод для грузового бокса дрона
-                            // POST /flight/openbox?isActive=false
+                            // POST /flight/openbox с boolean в body (false - закрыть)
                             final response =
                                 await FlightApi.openDroneBox(false);
                             if (response.statusCode >= 200 &&
@@ -362,7 +406,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                 children: [
                   _buildActionButton(
                     text: 'ЗЕЛЕНЫЙ',
-                    isActive: !isSendingLight,
+                    isActive: true, // Кнопки света не блокируются
                     activeColor: Colors.green,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -390,7 +434,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                   SizedBox(width: 8),
                   _buildActionButton(
                     text: 'КРАСНЫЙ',
-                    isActive: !isSendingLight,
+                    isActive: true, // Кнопки света не блокируются
                     activeColor: Colors.orange,
                     onPressed: () async {
                       SwipeConfirmDialog.show(
@@ -432,11 +476,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            // Без диалогов: циклически меняем высоту 1..5
-                            setState(() {
-                              selectedDistance =
-                                  selectedDistance >= 5 ? 1 : selectedDistance + 1;
-                            });
+                            _showHeightSelectionDialog();
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
@@ -466,6 +506,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                         isActive: true,
                         activeColor: Colors.green,
                         onPressed: () async {
+                          if (isSendingTest) return; // Предотвращаем дублирование
                           SwipeConfirmDialog.show(
                             context: context,
                             title: 'Взлет',
@@ -474,13 +515,56 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                             confirmColor: Colors.green,
                             icon: Symbols.drone,
                             onConfirm: () async {
+                              if (isSendingTest) return; // Предотвращаем дублирование
                               setState(() => isSendingTest = true);
                               try {
-                                await FlightApi.testSystemCheck(
-                                  isActive: true,
-                                  distance: selectedDistance,
-                                );
+                                // Повторяем запрос до 3 раз при ошибке
+                                int maxRetries = 3;
+                                http.Response? response;
+                                Exception? lastError;
+                                
+                                for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                                  try {
+                                    response = await FlightApi.testSystemCheck(
+                                      isActive: true,
+                                      distance: selectedDistance,
+                                    );
+                                    
+                                    // Проверяем успешность ответа
+                                    if (response.statusCode >= 200 && response.statusCode < 300) {
+                                      print('✅ Запрос на взлет успешен с попытки $attempt');
+                                      break; // Успешно, выходим из цикла
+                                    } else {
+                                      print('⚠️ Попытка $attempt: статус ${response.statusCode}');
+                                      if (attempt < maxRetries) {
+                                        await Future.delayed(Duration(milliseconds: 500));
+                                      }
+                                    }
+                                  } catch (e) {
+                                    lastError = e is Exception ? e : Exception(e.toString());
+                                    print('❌ Попытка $attempt: ошибка $e');
+                                    if (attempt < maxRetries) {
+                                      await Future.delayed(Duration(milliseconds: 500));
+                                    }
+                                  }
+                                }
+                                
+                                // Если все попытки неудачны, показываем ошибку
+                                if (response == null || (response.statusCode < 200 || response.statusCode >= 300)) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Ошибка взлета после $maxRetries попыток'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                  if (lastError != null) {
+                                    throw lastError;
+                                  }
+                                }
                               } catch (e) {
+                                print('❌ Ошибка при взлете: $e');
                               } finally {
                                 if (mounted)
                                   setState(() => isSendingTest = false);
@@ -495,6 +579,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                         isActive: true,
                         activeColor: Colors.orange,
                         onPressed: () async {
+                          if (isSendingTest) return; // Предотвращаем дублирование
                           SwipeConfirmDialog.show(
                             context: context,
                             title: 'Снижение',
@@ -504,13 +589,56 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                             confirmColor: Colors.orange,
                             icon: Symbols.drone,
                             onConfirm: () async {
+                              if (isSendingTest) return; // Предотвращаем дублирование
                               setState(() => isSendingTest = true);
                               try {
-                                await FlightApi.testSystemCheck(
-                                  isActive: false,
-                                  distance: selectedDistance,
-                                );
+                                // Повторяем запрос до 3 раз при ошибке
+                                int maxRetries = 3;
+                                http.Response? response;
+                                Exception? lastError;
+                                
+                                for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                                  try {
+                                    response = await FlightApi.testSystemCheck(
+                                      isActive: false,
+                                      distance: selectedDistance,
+                                    );
+                                    
+                                    // Проверяем успешность ответа
+                                    if (response.statusCode >= 200 && response.statusCode < 300) {
+                                      print('✅ Запрос на посадку успешен с попытки $attempt');
+                                      break; // Успешно, выходим из цикла
+                                    } else {
+                                      print('⚠️ Попытка $attempt: статус ${response.statusCode}');
+                                      if (attempt < maxRetries) {
+                                        await Future.delayed(Duration(milliseconds: 500));
+                                      }
+                                    }
+                                  } catch (e) {
+                                    lastError = e is Exception ? e : Exception(e.toString());
+                                    print('❌ Попытка $attempt: ошибка $e');
+                                    if (attempt < maxRetries) {
+                                      await Future.delayed(Duration(milliseconds: 500));
+                                    }
+                                  }
+                                }
+                                
+                                // Если все попытки неудачны, показываем ошибку
+                                if (response == null || (response.statusCode < 200 || response.statusCode >= 300)) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Ошибка посадки после $maxRetries попыток'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                  if (lastError != null) {
+                                    throw lastError;
+                                  }
+                                }
                               } catch (e) {
+                                print('❌ Ошибка при посадке: $e');
                               } finally {
                                 if (mounted)
                                   setState(() => isSendingTest = false);
@@ -565,20 +693,44 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                         isActive: !isFlightStarted,
                         activeColor: Colors.green,
                         onPressed: () async {
-                          SwipeConfirmDialog.show(
+                          showDialog(
                             context: context,
-                            title: 'Старт полета',
-                            message: 'Начать полет по маршруту?',
-                            confirmText: 'Старт',
-                            confirmColor: Colors.green,
-                            icon: Icons.flight_takeoff,
-                            onConfirm: () async {
-                              setState(() => isFlightStarted = true);
-                              try {
-                                await FlightApi.droneStartFlight();
-                              } catch (e) {
-                                setState(() => isFlightStarted = false);
-                              }
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text(
+                                  'Старт полета',
+                                  style: TextStyle(color: Colors.black),
+                                ),
+                                content: Text(
+                                  'Начать полет по маршруту?',
+                                  style: TextStyle(color: Colors.black),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(),
+                                    child: Text(
+                                      'Отмена',
+                                      style: TextStyle(color: Colors.grey[600]),
+                                    ),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      Navigator.of(context).pop();
+                                      setState(() => isFlightStarted = true);
+                                      try {
+                                        await FlightApi.droneStartFlight();
+                                      } catch (e) {
+                                        setState(() => isFlightStarted = false);
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: Text('Старт'),
+                                  ),
+                                ],
+                              );
                             },
                           );
                         },
@@ -589,19 +741,43 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                         isActive: true,
                         activeColor: Colors.orange,
                         onPressed: () async {
-                          SwipeConfirmDialog.show(
+                          showDialog(
                             context: context,
-                            title: 'Отмена полета',
-                            message: 'Отменить полет дрона?',
-                            confirmText: 'Отменить',
-                            confirmColor: Colors.orange,
-                            icon: Icons.cancel,
-                            onConfirm: () async {
-                              try {
-                                await FlightApi.droneCancelFlight();
-                                setState(() => isFlightStarted = false);
-                              } catch (e) {
-                              }
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text(
+                                  'Отмена полета',
+                                  style: TextStyle(color: Colors.black),
+                                ),
+                                content: Text(
+                                  'Отменить полет дрона?',
+                                  style: TextStyle(color: Colors.black),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(),
+                                    child: Text(
+                                      'Отмена',
+                                      style: TextStyle(color: Colors.grey[600]),
+                                    ),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      Navigator.of(context).pop();
+                                      try {
+                                        await FlightApi.droneCancelFlight();
+                                        setState(() => isFlightStarted = false);
+                                      } catch (e) {
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orange,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: Text('Отменить'),
+                                  ),
+                                ],
+                              );
                             },
                           );
                         },
@@ -619,21 +795,45 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
               onPressed: isLanding
                   ? null
                   : () {
-                      SwipeConfirmDialog.show(
+                      showDialog(
                         context: context,
-                        title: 'Посадка',
-                        message: 'Выполнить посадку дрона?',
-                        confirmText: 'Посадить',
-                        confirmColor: Colors.green,
-                        icon: Icons.flight_land,
-                        onConfirm: () async {
-                          setState(() => isLanding = true);
-                          try {
-                            await FlightApi.droneLand();
-                          } catch (e) {
-                          } finally {
-                            if (mounted) setState(() => isLanding = false);
-                          }
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text(
+                              'Посадка',
+                              style: TextStyle(color: Colors.black),
+                            ),
+                            content: Text(
+                              'Выполнить посадку дрона?',
+                              style: TextStyle(color: Colors.black),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: Text(
+                                  'Отмена',
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  Navigator.of(context).pop();
+                                  setState(() => isLanding = true);
+                                  try {
+                                    await FlightApi.droneLand();
+                                  } catch (e) {
+                                  } finally {
+                                    if (mounted) setState(() => isLanding = false);
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: Text('Посадить'),
+                              ),
+                            ],
+                          );
                         },
                       );
                     },
@@ -662,22 +862,46 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
               onPressed: isReturningHome
                   ? null
                   : () {
-                      SwipeConfirmDialog.show(
+                      showDialog(
                         context: context,
-                        title: 'Возвращение домой',
-                        message: 'Отправить дрон на базу?',
-                        confirmText: 'Отправить',
-                        confirmColor: Colors.blue.shade700,
-                        icon: Icons.home,
-                        onConfirm: () async {
-                          setState(() => isReturningHome = true);
-                          try {
-                            await FlightApi.returnToHome();
-                          } catch (e) {
-                          } finally {
-                            if (mounted)
-                              setState(() => isReturningHome = false);
-                          }
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text(
+                              'Возвращение домой',
+                              style: TextStyle(color: Colors.black),
+                            ),
+                            content: Text(
+                              'Отправить дрон на базу?',
+                              style: TextStyle(color: Colors.black),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: Text(
+                                  'Отмена',
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  Navigator.of(context).pop();
+                                  setState(() => isReturningHome = true);
+                                  try {
+                                    await FlightApi.returnToHome();
+                                  } catch (e) {
+                                  } finally {
+                                    if (mounted)
+                                      setState(() => isReturningHome = false);
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue.shade700,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: Text('Отправить'),
+                              ),
+                            ],
+                          );
                         },
                       );
                     },
@@ -706,24 +930,47 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
               onPressed: isEmergencyStopping
                   ? null
                   : () {
-                      SwipeConfirmDialog.show(
+                      showDialog(
                         context: context,
-                        title: 'Экстренная остановка',
-                        message:
-                            'Вы уверены, что хотите выполнить экстренную остановку дрона? Это действие нельзя отменить!',
-                        confirmText: 'Остановить',
-                        confirmColor: Colors.red,
-                        icon: Icons.emergency,
-                        onConfirm: () async {
-                          setState(() => isEmergencyStopping = true);
-                          try {
-                            await FlightApi.emergencyStop();
-                            setState(() => isFlightStarted = false);
-                          } catch (e) {
-                          } finally {
-                            if (mounted)
-                              setState(() => isEmergencyStopping = false);
-                          }
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text(
+                              'Экстренная остановка',
+                              style: TextStyle(color: Colors.black),
+                            ),
+                            content: Text(
+                              'Вы уверены, что хотите выполнить экстренную остановку дрона? Это действие нельзя отменить!',
+                              style: TextStyle(color: Colors.black),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: Text(
+                                  'Отмена',
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  Navigator.of(context).pop();
+                                  setState(() => isEmergencyStopping = true);
+                                  try {
+                                    await FlightApi.emergencyStop();
+                                    setState(() => isFlightStarted = false);
+                                  } catch (e) {
+                                  } finally {
+                                    if (mounted)
+                                      setState(() => isEmergencyStopping = false);
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: Text('Остановить'),
+                              ),
+                            ],
+                          );
                         },
                       );
                     },
