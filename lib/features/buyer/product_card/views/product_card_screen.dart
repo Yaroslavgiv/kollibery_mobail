@@ -17,7 +17,7 @@ class ProductCardScreen extends StatelessWidget {
   ProductCardScreen({required this.product});
 
   final ProductCardController controller = Get.put(ProductCardController());
-  final CartController cartController = Get.put(CartController());
+  final CartController cartController = Get.find<CartController>();
   final GetStorage box = GetStorage();
 
   @override

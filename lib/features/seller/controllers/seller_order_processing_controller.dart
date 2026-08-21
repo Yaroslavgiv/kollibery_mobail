@@ -1,9 +1,8 @@
 import "package:get/get.dart";
 import "dart:async";
 import "package:flutter/material.dart";
-import "package:http/http.dart" as http;
 import "../../../data/models/order_model.dart";
-import "../../../data/sources/api/flight_api.dart";
+import '../../../presentation/managers/device_command_manager.dart';
 
 class SellerOrderProcessingController extends GetxController {
   var currentStep = 0.obs; // Начинаем с 0 ("Заказ принят")
@@ -163,17 +162,11 @@ class SellerOrderProcessingController extends GetxController {
   }
 
   void _openCargoBay() {
-    FlightApi.openDroneBox(true).catchError((e) {
-      print('❌ Ошибка при открытии отсека: $e');
-      return http.Response('', 500);
-    });
+    Get.find<DeviceCommandManager>().openCargoBox();
   }
 
   void _closeCargoBay() {
-    FlightApi.openDroneBox(false).catchError((e) {
-      print('❌ Ошибка при закрытии отсека: $e');
-      return http.Response('', 500);
-    });
+    Get.find<DeviceCommandManager>().closeCargoBox();
   }
 
   void _sendDroneBack() async {

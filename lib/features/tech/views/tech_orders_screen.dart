@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../data/repositories/order_repository.dart';
-import '../../../data/repositories/order_history_repository.dart';
+import '../../../domain/services/order_service.dart';
 import '../../../data/models/order_model.dart';
 import '../../../utils/helpers/hex_image.dart';
 
@@ -12,8 +11,7 @@ class TechOrdersScreen extends StatefulWidget {
 
 class _TechOrdersScreenState extends State<TechOrdersScreen>
     with SingleTickerProviderStateMixin {
-  final OrderRepository orderRepository = OrderRepository();
-  final OrderHistoryRepository historyRepository = OrderHistoryRepository();
+  final OrderService _orderService = Get.find<OrderService>();
   late Future<List<OrderModel>> _future;
   late TabController _tabController;
 
@@ -21,7 +19,7 @@ class _TechOrdersScreenState extends State<TechOrdersScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _future = orderRepository.fetchTechOrdersAsModels();
+    _future = _orderService.getTechOrders();
   }
 
   @override
@@ -32,7 +30,7 @@ class _TechOrdersScreenState extends State<TechOrdersScreen>
 
   Future<void> _refresh() async {
     setState(() {
-      _future = orderRepository.fetchTechOrdersAsModels();
+      _future = _orderService.getTechOrders();
     });
     await _future;
   }
@@ -58,7 +56,7 @@ class _TechOrdersScreenState extends State<TechOrdersScreen>
   // Фильтрация истории заказов (завершенных или отмененных)
   List<OrderModel> _getHistoryOrders(List<OrderModel> orders) {
     // Сначала загружаем локальную историю для быстрого отображения
-    final localHistory = historyRepository.getTechOrderHistory();
+    final localHistory = _orderService.techHistory();
     
     // Фильтруем заказы с сервера (завершенные или отмененные)
     final serverHistoryOrders = orders.where((order) {

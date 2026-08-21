@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../data/repositories/auth_repository.dart';
+import '../../../domain/services/auth_service.dart';
 
 class ProfileController extends GetxController {
   // Объекты данных профиля
@@ -13,8 +13,8 @@ class ProfileController extends GetxController {
   final RxString deliveryPoint = ''.obs; // Точка доставки
 
   final GetStorage storage = GetStorage(); // Локальное хранилище
-  final AuthRepository _authRepository =
-      AuthRepository(); // Репозиторий для работы с API
+  final AuthService _authService =
+      Get.find<AuthService>(); // Сервис авторизации/профиля
   final RxBool isLoading = false.obs; // Флаг загрузки
 
   @override
@@ -94,7 +94,7 @@ class ProfileController extends GetxController {
       // Пытаемся загрузить актуальные данные с сервера
       isLoading.value = true;
       try {
-        final apiResponse = await _authRepository.getProfile();
+        final apiResponse = await _authService.getProfile();
         if (apiResponse.isNotEmpty) {
           updateProfileFromApi(apiResponse);
         }
@@ -109,7 +109,7 @@ class ProfileController extends GetxController {
           final email = storage.read<String>('email');
           if (email != null && email.isNotEmpty) {
             final userResponse =
-                await _authRepository.getAccountUserByUsername(email);
+                await _authService.getAccountUserByUsername(email);
             if (userResponse.isNotEmpty) {
               updateNameFromAccountUser(userResponse);
               _saveUserIdFromData(userResponse);
@@ -120,14 +120,14 @@ class ProfileController extends GetxController {
           final email = storage.read<String>('email');
           if (email != null && email.isNotEmpty) {
             final userResponse =
-                await _authRepository.getAccountUserByUsername(email);
+                await _authService.getAccountUserByUsername(email);
             if (userResponse.isNotEmpty) {
               updateNameFromAccountUser(userResponse);
               _saveUserIdFromData(userResponse);
             }
           }
         } else {
-          final userResponse = await _authRepository.getAccountUser(userId);
+          final userResponse = await _authService.getAccountUser(userId);
           if (userResponse.isNotEmpty) {
             updateNameFromAccountUser(userResponse);
             _saveUserIdFromData(userResponse);
@@ -344,7 +344,7 @@ class ProfileController extends GetxController {
       }
 
       // Отправляем данные на сервер (в фоновом режиме)
-      final response = await _authRepository.updateProfile(
+      final response = await _authService.updateProfile(
         firstName: firstName,
         lastName: lastName,
         email: email,

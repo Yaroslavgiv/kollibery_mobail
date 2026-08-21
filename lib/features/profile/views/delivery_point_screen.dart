@@ -8,7 +8,7 @@ import 'package:get/get.dart';
 import 'package:location/location.dart';
 import 'package:http/http.dart' as http;
 import '../../../common/styles/colors.dart';
-import '../../../data/repositories/order_repository.dart';
+import '../../../domain/services/order_service.dart';
 import '../../../data/models/order_model.dart';
 import '../../cart/controllers/cart_controller.dart';
 import '../../orders/controllers/orders_controller.dart';
@@ -561,8 +561,8 @@ class _DeliveryPointScreenState extends State<DeliveryPointScreen> {
       print('   quantity: $quantity');
       print('   Координаты: ${point.latitude}, ${point.longitude}');
 
-      final orderRepository = OrderRepository();
-      final success = await orderRepository.placeOrder(
+      final orderService = Get.find<OrderService>();
+      final success = await orderService.placeOrder(
         userId: userId,
         productId: productId,
         quantity: quantity,

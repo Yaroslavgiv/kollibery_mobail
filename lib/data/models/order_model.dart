@@ -1,40 +1,24 @@
-class OrderModel {
-  final int id;
-  final String userId;
-  final int productId;
-  final int quantity;
-  final double deliveryLatitude;
-  final double deliveryLongitude;
-  final String status;
-  final String productName;
-  final String productImage;
-  final double price;
-  final String buyerName;
-  final String sellerName;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
+import '../../domain/entities/order_entity.dart';
 
-  // Дополнительная информация о товаре
-  final String productDescription;
-  final String productCategory;
-
-  OrderModel({
-    required this.id,
-    required this.userId,
-    required this.productId,
-    required this.quantity,
-    required this.deliveryLatitude,
-    required this.deliveryLongitude,
-    required this.status,
-    required this.productName,
-    required this.productImage,
-    required this.price,
-    required this.buyerName,
-    required this.sellerName,
-    this.createdAt,
-    this.updatedAt,
-    this.productDescription = '',
-    this.productCategory = '',
+/// DTO заказа. Расширяет доменную сущность и умеет JSON.
+class OrderModel extends OrderEntity {
+  const OrderModel({
+    required super.id,
+    required super.userId,
+    required super.productId,
+    required super.quantity,
+    required super.deliveryLatitude,
+    required super.deliveryLongitude,
+    required super.status,
+    required super.productName,
+    required super.productImage,
+    required super.price,
+    required super.buyerName,
+    required super.sellerName,
+    super.createdAt,
+    super.updatedAt,
+    super.productDescription = '',
+    super.productCategory = '',
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {

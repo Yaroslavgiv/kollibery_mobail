@@ -1,8 +1,9 @@
 import '../../../utils/local_storage/order_history_service.dart';
+import '../../domain/repositories/order_history_repository.dart' as contracts;
 import '../models/order_model.dart';
 
-/// Репозиторий для работы с историей заказов в локальном кеше
-class OrderHistoryRepository {
+/// Реализация локальной истории заказов.
+class OrderHistoryRepositoryImpl implements contracts.OrderHistoryRepository {
 
   /// Сохранение заказа в историю
   /// Сохраняет только выполненные заказы (статус 'delivered')

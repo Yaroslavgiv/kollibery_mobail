@@ -1,8 +1,10 @@
-import '../sources/api/order_api.dart';
-import '../models/order_model.dart';
+import '../../domain/repositories/order_repository.dart' as contracts;
 import '../../utils/local_storage/storage_utility.dart';
+import '../models/order_model.dart';
+import '../sources/api/order_api.dart';
 
-class OrderRepository {
+/// Реализация репозитория заказов.
+class OrderRepositoryImpl implements contracts.OrderRepository {
   final KLocalStorage _localStorage = KLocalStorage();
   static const String _orderStatusesKey = 'order_statuses';
   /// Получение всех заказов

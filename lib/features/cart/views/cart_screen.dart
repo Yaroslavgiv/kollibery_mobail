@@ -6,7 +6,7 @@ import '../../orders/views/order_details_screen.dart';
 import '../controllers/cart_controller.dart';
 
 class CartScreen extends StatelessWidget {
-  final CartController cartController = Get.put(CartController());
+  final CartController cartController = Get.find<CartController>();
 
   @override
   Widget build(BuildContext context) {

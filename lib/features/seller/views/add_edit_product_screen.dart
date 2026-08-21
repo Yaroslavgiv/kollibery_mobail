@@ -7,7 +7,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../common/styles/colors.dart';
 import '../../../common/themes/text_theme.dart';
-import '../../../data/repositories/product_repository.dart';
+import '../../../presentation/managers/catalog_manager.dart';
 import '../../../features/home/models/product_model.dart';
 import '../../../utils/device/screen_util.dart';
 import '../../../utils/helpers/hex_image.dart';
@@ -27,7 +27,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
   final _quantityController = TextEditingController();
-  final _productRepository = ProductRepository();
+  final _catalogManager = Get.find<CatalogManager>();
   final _imagePicker = ImagePicker();
   bool _isLoading = false;
   String? _selectedImagePath;
@@ -311,7 +311,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       bool success;
       if (widget.product == null) {
         // Добавление нового товара
-        success = await _productRepository.addProduct(
+        success = await _catalogManager.addProduct(
           name: name,
           description: description,
           price: price,
@@ -323,7 +323,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         }
       } else {
         // Редактирование существующего товара
-        success = await _productRepository.updateProduct(
+        success = await _catalogManager.updateProduct(
           productId: widget.product!.id,
           name: name,
           description: description,

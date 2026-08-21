@@ -1,50 +1,25 @@
-// Главный класс приложения
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 
 import 'common/themes/theme.dart';
+import 'presentation/providers/session_provider.dart';
 import 'routes/app_routes.dart';
 
+/// Корневой виджет. Маршрут выбирает SessionProvider, а не View.
 class App extends StatelessWidget {
-  App({super.key});
+  const App({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final box = GetStorage();
-    bool isLoggedIn = box.read('loggedIn') ?? false;
-    final String? role = box.read('role');
-
-    // Отладочная информация
-    print('=== APP.DART DEBUG ===');
-    print('isLoggedIn: $isLoggedIn');
-    print('role from storage: $role');
-
-    // Если пользователь не авторизован, идём на логин.
-    // Если авторизован и роль - 'seller', идём на SellerMainScreen.
-    // Если роль - 'technician', идём на TechMainScreen.
-    // Иначе - на обычный MainScreen.
-    final initialRoute = !isLoggedIn
-        ? AppRoutes.login
-        : (role == 'seller'
-            ? AppRoutes.sellerHome
-            : role == 'technician'
-                ? AppRoutes.techHome
-                : role == 'buyer'
-                    ? AppRoutes.home
-                    : AppRoutes.login);
-
-    print('initialRoute: $initialRoute');
-    print('=== END DEBUG ===');
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       theme: TAppTheme.lightTheme,
-      darkTheme: TAppTheme.lightTheme, // Установка темной темы (по умолчанию)
-      initialRoute: initialRoute, // Указание начального маршрута
-      getPages: AppRoutes.pages, // Передача списка маршрутов в GetMaterialApp
+      darkTheme: TAppTheme.lightTheme,
+      initialRoute: Get.find<SessionProvider>().initialRoute,
+      getPages: AppRoutes.pages,
       unknownRoute: GetPage(
         name: AppRoutes.notFound,
-        page: () => Scaffold(
+        page: () => const Scaffold(
           body: Center(
             child: Text('Маршрут не найден'),
           ),

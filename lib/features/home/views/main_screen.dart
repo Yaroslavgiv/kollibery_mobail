@@ -24,10 +24,10 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-  final CartController cartController = Get.put(CartController());
+  final CartController cartController = Get.find<CartController>();
   // Пытаемся найти существующий контроллер, если нет - создаем новый
   late final ProfileController profileController;
-  final AuthController authController = Get.put(AuthController());
+  final AuthController authController = Get.find<AuthController>();
   final GetStorage box = GetStorage();
 
   final List<Widget> _pages = [
@@ -40,11 +40,7 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     // Пытаемся найти существующий контроллер, если нет - создаем новый
-    try {
-      profileController = Get.find<ProfileController>();
-    } catch (e) {
-      profileController = Get.put(ProfileController());
-    }
+    profileController = Get.find<ProfileController>();
     
     // Загружаем данные профиля при инициализации экрана
     WidgetsBinding.instance.addPostFrameCallback((_) {

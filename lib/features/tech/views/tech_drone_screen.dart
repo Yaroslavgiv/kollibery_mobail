@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
-import 'package:http/http.dart' as http;
-import '../../../data/sources/api/flight_api.dart';
+import '../../../presentation/managers/device_command_manager.dart';
 import '../../../routes/app_routes.dart';
 import '../../../common/widgets/swipe_confirm_dialog.dart';
 import '../controllers/drone_status_controller.dart';
@@ -267,9 +266,8 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                           setState(() => isControllingLock = true);
                           try {
                             final response =
-                                await FlightApi.controlDroneLock(true);
-                            if (response.statusCode >= 200 &&
-                                response.statusCode < 300) {
+                                await Get.find<DeviceCommandManager>().controlDroneLock(true);
+                            if (response) {
                               setState(() => isLockOpen = true);
                             }
                           } catch (e) {
@@ -298,9 +296,8 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                           setState(() => isControllingLock = true);
                           try {
                             final response =
-                                await FlightApi.controlDroneLock(false);
-                            if (response.statusCode >= 200 &&
-                                response.statusCode < 300) {
+                                await Get.find<DeviceCommandManager>().controlDroneLock(false);
+                            if (response) {
                               setState(() => isLockOpen = false);
                             }
                           } catch (e) {
@@ -341,9 +338,8 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                           try {
                             // Используем правильный API метод для грузового бокса дрона
                             // POST /flight/openbox с boolean в body (true - открыть)
-                            final response = await FlightApi.openDroneBox(true);
-                            if (response.statusCode >= 200 &&
-                                response.statusCode < 300) {
+                            final response = await Get.find<DeviceCommandManager>().openDroneBox(true);
+                            if (response) {
                               setState(() => isBoxOpen = true);
                             }
                           } catch (e) {
@@ -374,9 +370,8 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                             // Используем правильный API метод для грузового бокса дрона
                             // POST /flight/openbox с boolean в body (false - закрыть)
                             final response =
-                                await FlightApi.openDroneBox(false);
-                            if (response.statusCode >= 200 &&
-                                response.statusCode < 300) {
+                                await Get.find<DeviceCommandManager>().openDroneBox(false);
+                            if (response) {
                               setState(() => isBoxOpen = false);
                             }
                           } catch (e) {
@@ -422,7 +417,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                             selectedColor = 1;
                           });
                           try {
-                            await FlightApi.testBacklight(colorNumber: 1);
+                            await Get.find<DeviceCommandManager>().testBacklight(colorNumber: 1);
                           } catch (e) {
                           } finally {
                             if (mounted) setState(() => isSendingLight = false);
@@ -450,7 +445,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                             selectedColor = 2;
                           });
                           try {
-                            await FlightApi.testBacklight(colorNumber: 2);
+                            await Get.find<DeviceCommandManager>().testBacklight(colorNumber: 2);
                           } catch (e) {
                           } finally {
                             if (mounted) setState(() => isSendingLight = false);
@@ -518,50 +513,24 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                               if (isSendingTest) return; // Предотвращаем дублирование
                               setState(() => isSendingTest = true);
                               try {
-                                // Повторяем запрос до 3 раз при ошибке
-                                int maxRetries = 3;
-                                http.Response? response;
-                                Exception? lastError;
-                                
-                                for (int attempt = 1; attempt <= maxRetries; attempt++) {
-                                  try {
-                                    response = await FlightApi.testSystemCheck(
-                                      isActive: true,
-                                      distance: selectedDistance,
-                                    );
-                                    
-                                    // Проверяем успешность ответа
-                                    if (response.statusCode >= 200 && response.statusCode < 300) {
-                                      print('✅ Запрос на взлет успешен с попытки $attempt');
-                                      break; // Успешно, выходим из цикла
-                                    } else {
-                                      print('⚠️ Попытка $attempt: статус ${response.statusCode}');
-                                      if (attempt < maxRetries) {
-                                        await Future.delayed(Duration(milliseconds: 500));
-                                      }
-                                    }
-                                  } catch (e) {
-                                    lastError = e is Exception ? e : Exception(e.toString());
-                                    print('❌ Попытка $attempt: ошибка $e');
-                                    if (attempt < maxRetries) {
-                                      await Future.delayed(Duration(milliseconds: 500));
-                                    }
-                                  }
+                                bool success = false;
+                                for (int attempt = 1; attempt <= 3; attempt++) {
+                                  success = await Get.find<DeviceCommandManager>()
+                                      .testSystemCheck(
+                                    isActive: true,
+                                    distance: selectedDistance,
+                                  );
+                                  if (success) break;
+                                  await Future.delayed(
+                                      const Duration(milliseconds: 500));
                                 }
-                                
-                                // Если все попытки неудачны, показываем ошибку
-                                if (response == null || (response.statusCode < 200 || response.statusCode >= 300)) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Ошибка взлета после $maxRetries попыток'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                  if (lastError != null) {
-                                    throw lastError;
-                                  }
+                                if (!success && mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Ошибка взлета'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
                                 }
                               } catch (e) {
                                 print('❌ Ошибка при взлете: $e');
@@ -592,50 +561,24 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                               if (isSendingTest) return; // Предотвращаем дублирование
                               setState(() => isSendingTest = true);
                               try {
-                                // Повторяем запрос до 3 раз при ошибке
-                                int maxRetries = 3;
-                                http.Response? response;
-                                Exception? lastError;
-                                
-                                for (int attempt = 1; attempt <= maxRetries; attempt++) {
-                                  try {
-                                    response = await FlightApi.testSystemCheck(
-                                      isActive: false,
-                                      distance: selectedDistance,
-                                    );
-                                    
-                                    // Проверяем успешность ответа
-                                    if (response.statusCode >= 200 && response.statusCode < 300) {
-                                      print('✅ Запрос на посадку успешен с попытки $attempt');
-                                      break; // Успешно, выходим из цикла
-                                    } else {
-                                      print('⚠️ Попытка $attempt: статус ${response.statusCode}');
-                                      if (attempt < maxRetries) {
-                                        await Future.delayed(Duration(milliseconds: 500));
-                                      }
-                                    }
-                                  } catch (e) {
-                                    lastError = e is Exception ? e : Exception(e.toString());
-                                    print('❌ Попытка $attempt: ошибка $e');
-                                    if (attempt < maxRetries) {
-                                      await Future.delayed(Duration(milliseconds: 500));
-                                    }
-                                  }
+                                bool success = false;
+                                for (int attempt = 1; attempt <= 3; attempt++) {
+                                  success = await Get.find<DeviceCommandManager>()
+                                      .testSystemCheck(
+                                    isActive: false,
+                                    distance: selectedDistance,
+                                  );
+                                  if (success) break;
+                                  await Future.delayed(
+                                      const Duration(milliseconds: 500));
                                 }
-                                
-                                // Если все попытки неудачны, показываем ошибку
-                                if (response == null || (response.statusCode < 200 || response.statusCode >= 300)) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Ошибка посадки после $maxRetries попыток'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                  if (lastError != null) {
-                                    throw lastError;
-                                  }
+                                if (!success && mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Ошибка посадки'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
                                 }
                               } catch (e) {
                                 print('❌ Ошибка при посадке: $e');
@@ -718,7 +661,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                                       Navigator.of(context).pop();
                                       setState(() => isFlightStarted = true);
                                       try {
-                                        await FlightApi.droneStartFlight();
+                                        await Get.find<DeviceCommandManager>().droneStartFlight();
                                       } catch (e) {
                                         setState(() => isFlightStarted = false);
                                       }
@@ -765,7 +708,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                                     onPressed: () async {
                                       Navigator.of(context).pop();
                                       try {
-                                        await FlightApi.droneCancelFlight();
+                                        await Get.find<DeviceCommandManager>().droneCancelFlight();
                                         setState(() => isFlightStarted = false);
                                       } catch (e) {
                                       }
@@ -820,7 +763,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                                   Navigator.of(context).pop();
                                   setState(() => isLanding = true);
                                   try {
-                                    await FlightApi.droneLand();
+                                    await Get.find<DeviceCommandManager>().droneLand();
                                   } catch (e) {
                                   } finally {
                                     if (mounted) setState(() => isLanding = false);
@@ -887,7 +830,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                                   Navigator.of(context).pop();
                                   setState(() => isReturningHome = true);
                                   try {
-                                    await FlightApi.returnToHome();
+                                    await Get.find<DeviceCommandManager>().returnToHome();
                                   } catch (e) {
                                   } finally {
                                     if (mounted)
@@ -955,7 +898,7 @@ class _TechDroneScreenState extends State<TechDroneScreen> {
                                   Navigator.of(context).pop();
                                   setState(() => isEmergencyStopping = true);
                                   try {
-                                    await FlightApi.emergencyStop();
+                                    await Get.find<DeviceCommandManager>().emergencyStop();
                                     setState(() => isFlightStarted = false);
                                   } catch (e) {
                                   } finally {

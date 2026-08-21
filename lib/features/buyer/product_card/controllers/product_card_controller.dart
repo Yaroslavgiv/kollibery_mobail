@@ -2,7 +2,7 @@ import 'package:get/get.dart';
 import '../../../cart/controllers/cart_controller.dart';
 
 class ProductCardController extends GetxController {
-  final CartController cartController = Get.put(CartController());
+  final CartController cartController = Get.find<CartController>();
 
   final isInCart = false.obs;
   final isInFavorites = false.obs;

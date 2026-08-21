@@ -1,24 +1,37 @@
 import 'package:dio/dio.dart';
-import 'package:get_storage/get_storage.dart';
-import '../../utils/constants/api_constants.dart';
-import '../../features/home/models/product_model.dart';
-import '../../features/auth/controllers/auth_controller.dart';
 import 'package:get/get.dart';
 
-class AuthRepository {
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: API_BASE_URL,
-    connectTimeout: Duration(seconds: 30),
-    receiveTimeout: Duration(seconds: 30),
-    sendTimeout: Duration(seconds: 30),
-  ));
+import '../../core/logging/app_logger.dart';
+import '../../core/network/api_client.dart';
+import '../../core/storage/local_storage.dart';
+import '../../core/utils/jwt_decoder.dart';
+import '../../domain/entities/user_entity.dart';
+import '../../domain/entities/user_role.dart';
+import '../../domain/repositories/auth_repository.dart' as contracts;
+
+/// Реализация репозитория авторизации.
+class AuthRepositoryImpl implements contracts.AuthRepository {
+  AuthRepositoryImpl({
+    ApiClient? apiClient,
+    LocalStorage? storage,
+  })  : _dio = (apiClient ?? Get.find<ApiClient>()).dio,
+        _storage = storage ?? Get.find<LocalStorage>();
+
+  final Dio _dio;
+  final LocalStorage _storage;
 
   /// Регистрация
   /// POST /account/register
-  /// Тело: firstName, lastName, email, password, confirmPassword, role, phoneNumber
-  Future<void> register(String firstName, String lastName, String email,
-      String password, String confirmPassword, String role,
-      [String? phoneNumber]) async {
+  @override
+  Future<void> register({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String password,
+    required String confirmPassword,
+    required String role,
+    String? phoneNumber,
+  }) async {
     try {
       final data = <String, dynamic>{
         "firstName": firstName,
@@ -66,7 +79,7 @@ class AuthRepository {
 
   /// Логин
   /// POST /account/login
-  /// Тело: { "email": "...", "password": "..." }
+  @override
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await _dio.post(
@@ -115,6 +128,7 @@ class AuthRepository {
   /// Обновление профиля пользователя
   /// PUT /account/updateProfile или POST /account/updateProfile
   /// Тело: { "firstName": "...", "lastName": "...", "email": "...", "phone": "..." }
+  @override
   Future<Map<String, dynamic>> updateProfile({
     required String firstName,
     required String lastName,
@@ -123,9 +137,8 @@ class AuthRepository {
   }) async {
     try {
       // Получаем токен из хранилища
-      final box = GetStorage();
-      final token = box.read<String>('token');
-      final role = box.read<String>('role') ?? 'unknown';
+      final token = _storage.read<String>('token');
+      final role = _storage.read<String>('role') ?? 'unknown';
 
       print('📤 API: Обновление профиля');
       print('   - Базовый URL: ${_dio.options.baseUrl}');
@@ -190,7 +203,7 @@ class AuthRepository {
       }
 
       // Получаем userId для возможного использования в пути
-      final userId = box.read<String>('userId');
+      final userId = _storage.read<String>('userId');
       print('   - userId: ${userId ?? "не найден"}');
 
       // Пробуем несколько вариантов эндпоинтов
@@ -314,11 +327,11 @@ class AuthRepository {
 
   /// Получение данных профиля пользователя
   /// GET /account/profile или GET /account/getProfile
+  @override
   Future<Map<String, dynamic>> getProfile() async {
     try {
       // Получаем токен из хранилища
-      final box = GetStorage();
-      final token = box.read<String>('token');
+      final token = _storage.read<String>('token');
 
       final headers = <String, String>{
         'Content-Type': 'application/json',
@@ -361,10 +374,10 @@ class AuthRepository {
 
   /// Получение данных пользователя
   /// GET /account/user?userId=...
+  @override
   Future<Map<String, dynamic>> getAccountUser(String userId) async {
     try {
-      final box = GetStorage();
-      final token = box.read<String>('token');
+      final token = _storage.read<String>('token');
 
       final headers = <String, String>{
         'Content-Type': 'application/json',
@@ -433,10 +446,10 @@ class AuthRepository {
 
   /// Получение данных пользователя по имени (username/email)
   /// POST /account/username
+  @override
   Future<Map<String, dynamic>> getAccountUserByUsername(String userName) async {
     try {
-      final box = GetStorage();
-      final token = box.read<String>('token');
+      final token = _storage.read<String>('token');
 
       final headers = <String, String>{
         'Content-Type': 'application/json',
@@ -508,6 +521,7 @@ class AuthRepository {
   /// Сброс пароля (если поддерживается)
   /// POST /account/forgotPassword
   /// Тело: { "email": "..." } — или что требует ваш сервер
+  @override
   Future<void> forgotPassword(String email) async {
     try {
       final response = await _dio.post(
@@ -539,257 +553,28 @@ class AuthRepository {
     }
   }
 
-  /// Тестовый метод для проверки API товаров
-  Future<void> testProductsAPI(String token) async {
+  @override
+  Future<UserEntity?> resolveAccount(String email, String? userId) async {
     try {
-      print('Тестирование API товаров с токеном: $token');
-      final response = await _dio.get(
-        '/order/getproducts',
-        options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-        ),
-      );
-      print('Тест API товаров успешен: ${response.statusCode}');
-      print('Данные: ${response.data}');
-    } on DioException catch (e) {
-      print('Тест API товаров провален: ${e.message}');
-      print('Код ошибки: ${e.response?.statusCode}');
-    }
-  }
-
-  /// Простой тест API товаров без авторизации
-  Future<void> testSimpleProductsAPI() async {
-    try {
-      print('🔍 Тестирование простого запроса к API товаров');
-
-      // Тест 1: Простой GET запрос
-      final response1 = await _dio.get('/order/getproducts');
-      print('✅ Простой GET запрос успешен: ${response1.statusCode}');
-      print('Данные: ${response1.data}');
-      return;
-    } on DioException catch (e) {
-      print('❌ Простой GET запрос провален: ${e.response?.statusCode}');
-    }
-
-    try {
-      // Тест 2: С базовыми заголовками
-      final response2 = await _dio.get(
-        '/order/getproducts',
-        options: Options(
-          headers: {
-            'Accept': 'application/json',
-          },
-        ),
-      );
-      print('✅ GET с Accept заголовком успешен: ${response2.statusCode}');
-      print('Данные: ${response2.data}');
-      return;
-    } on DioException catch (e) {
-      print('❌ GET с Accept заголовком провален: ${e.response?.statusCode}');
-    }
-
-    try {
-      // Тест 3: С Content-Type заголовком
-      final response3 = await _dio.get(
-        '/order/getproducts',
-        options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        ),
-      );
-      print('✅ GET с Content-Type заголовком успешен: ${response3.statusCode}');
-      print('Данные: ${response3.data}');
-      return;
-    } on DioException catch (e) {
-      print(
-          '❌ GET с Content-Type заголовком провален: ${e.response?.statusCode}');
-    }
-
-    print('❌ Все простые тесты провалились');
-  }
-
-  /// Тест API товаров без авторизации
-  Future<void> testProductsAPIWithoutAuth() async {
-    try {
-      print('Тестирование API товаров БЕЗ авторизации');
-      final response = await _dio.get(
-        '/order/getproducts',
-        options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        ),
-      );
-      print('Тест API товаров БЕЗ авторизации успешен: ${response.statusCode}');
-      print('Данные: ${response.data}');
-    } on DioException catch (e) {
-      print('Тест API товаров БЕЗ авторизации провален: ${e.message}');
-      print('Код ошибки: ${e.response?.statusCode}');
-    }
-  }
-
-  /// Тест API товаров с разными форматами авторизации
-  Future<void> testProductsAPIWithDifferentAuth(String token) async {
-    final authFormats = [
-      {'Authorization': 'Bearer $token'},
-      {'Authorization': 'Token $token'},
-      {'X-Auth-Token': token},
-      {'X-API-Key': token},
-    ];
-
-    for (final headers in authFormats) {
-      try {
-        print('Тестирование API товаров с заголовками: $headers');
-        final response = await _dio.get(
-          '/order/getproducts',
-          options: Options(
-            headers: {
-              'Content-Type': 'application/json',
-              ...headers,
-            },
-          ),
-        );
-        print('Успех с заголовками $headers: ${response.statusCode}');
-        print('Данные: ${response.data}');
-        return; // Если успешно, прекращаем тестирование
-      } on DioException catch (e) {
-        print('Провал с заголовками $headers: ${e.response?.statusCode}');
-      }
-    }
-    print('Все форматы авторизации провалились');
-  }
-
-  /// Тест альтернативных путей API для товаров
-  Future<void> testAlternativeProductPaths() async {
-    final paths = [
-      '/products',
-      '/api/products',
-      '/api/order/products',
-      '/order/products',
-      '/items',
-      '/api/items',
-    ];
-
-    for (final path in paths) {
-      try {
-        print('Тестирование пути: $path');
-        final response = await _dio.get(
-          path,
-          options: Options(
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          ),
-        );
-        print('Успех с путем $path: ${response.statusCode}');
-        print('Данные: ${response.data}');
-        return; // Если успешно, прекращаем тестирование
-      } on DioException catch (e) {
-        print('Провал с путем $path: ${e.response?.statusCode}');
-      }
-    }
-    print('Все альтернативные пути провалились');
-  }
-}
-
-class ProductRepository {
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: API_BASE_URL,
-    connectTimeout: Duration(seconds: 30),
-    receiveTimeout: Duration(seconds: 30),
-    sendTimeout: Duration(seconds: 30),
-  ));
-
-  /// Получить список всех товаров
-  Future<List<ProductModel>> getProducts() async {
-    try {
-      // Получаем токен из AuthController
-      final authController = Get.find<AuthController>();
-      final token = authController.getToken();
-
-      // Добавляем заголовки для аутентификации
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
-
-      // Добавляем токен, если он есть
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
-      }
-
-      final response = await _dio.get(
-        '/order/getproducts',
-        options: Options(headers: headers),
-      );
-
-      if (response.statusCode == 200) {
-        if (response.data is List) {
-          final products = (response.data as List)
-              .map((item) => ProductModel.fromJson(item))
-              .toList();
-          return products;
-        } else {
-          throw Exception('Неверный формат данных от сервера');
-        }
+      Map<String, dynamic> data = {};
+      if (userId != null && userId.isNotEmpty && JwtDecoder.isGuid(userId)) {
+        data = await getAccountUser(userId);
       } else {
-        throw Exception(
-            'Ошибка получения списка товаров. Код: ${response.statusCode}');
+        data = await getAccountUserByUsername(email);
       }
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.sendTimeout) {
-        throw Exception(
-            'Превышено время ожидания. Проверьте подключение к интернету.');
-      } else if (e.type == DioExceptionType.connectionError) {
-        throw Exception(
-            'Ошибка подключения к серверу. Проверьте интернет-соединение.');
-      } else if (e.response?.statusCode == 401) {
-        throw Exception(
-            'Требуется авторизация для доступа к товарам. Пожалуйста, войдите в систему.');
-      } else {
-        throw Exception('Ошибка сети: ${e.message}');
-      }
+      if (data.isEmpty) return null;
+      final role = UserRole.fromString(data['role']?.toString());
+      return UserEntity(
+        id: data['userId']?.toString() ?? data['id']?.toString(),
+        email: data['email']?.toString() ?? email,
+        firstName: data['firstName']?.toString() ?? '',
+        lastName: data['lastName']?.toString() ?? '',
+        phone: data['phone']?.toString() ?? data['phoneNumber']?.toString() ?? '',
+        role: role,
+      );
     } catch (e) {
-      throw Exception('Неожиданная ошибка: $e');
-    }
-  }
-
-  /// Получить товар по ID
-  Future<ProductModel> getProductById(int productId) async {
-    try {
-      final response = await _dio.get(
-        '/order/getproductid/$productId',
-        options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-        ),
-      );
-
-      if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
-        return ProductModel.fromJson(response.data);
-      } else {
-        throw Exception('Ошибка получения товара. Код: ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.sendTimeout) {
-        throw Exception(
-            'Превышено время ожидания. Проверьте подключение к интернету.');
-      } else if (e.type == DioExceptionType.connectionError) {
-        throw Exception(
-            'Ошибка подключения к серверу. Проверьте интернет-соединение.');
-      } else {
-        throw Exception('Ошибка при получении товара: ${e.message}');
-      }
+      AppLogger.warning('Не удалось получить аккаунт с сервера: $e');
+      return null;
     }
   }
 }

@@ -2,33 +2,39 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:kollibry/app.dart';
-import 'package:get/get.dart';
-import 'features/auth/controllers/auth_controller.dart';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:kollibry/app.dart';
+
+import 'core/constants/storage_keys.dart';
+import 'core/di/app_bindings.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    systemNavigationBarColor: Colors.transparent, // прозрачный низ
-    statusBarColor: Colors.transparent, // прозрачный верх (если нужно)
+    systemNavigationBarColor: Colors.transparent,
+    statusBarColor: Colors.transparent,
     systemNavigationBarIconBrightness: Brightness.light,
     statusBarIconBrightness: Brightness.light,
   ));
-  // await Firebase.initializeApp(
-  //   options: DefaultFirebaseOptions.currentPlatform,
-  // );
-  await GetStorage.init(); // Инициализация GetStorage
-  // Однократная очистка локальной истории заказов
+
+  await GetStorage.init();
+
+  /// Однократная очистка устаревшей локальной истории.
   final box = GetStorage();
-  final isHistoryCleared = box.read('local_history_cleared') == true;
+  final isHistoryCleared = box.read(StorageKeys.localHistoryCleared) == true;
   if (!isHistoryCleared) {
-    await box.remove('seller_order_history');
-    await box.remove('local_orders');
-    await box.write('local_history_cleared', true);
+    await box.remove(StorageKeys.sellerOrderHistory);
+    await box.remove(StorageKeys.localOrders);
+    await box.write(StorageKeys.localHistoryCleared, true);
   }
 
-  // ВАЖНО: инициализация AuthController как singleton
-  Get.put(AuthController(), permanent: true);
+  /// Регистрируем слои до запуска UI.
+  AppBindings().dependencies();
 
-  runApp(App());
+  runApp(const App());
 }
+
