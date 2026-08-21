@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../../../common/styles/colors.dart';
-import '../../../data/repositories/order_repository.dart';
+import '../../../domain/services/order_service.dart';
 import '../../../data/models/order_model.dart';
 import '../../../utils/helpers/hex_image.dart';
 
@@ -13,7 +14,7 @@ class OrderListScreen extends StatefulWidget {
 
 class _OrderListScreenState extends State<OrderListScreen>
     with WidgetsBindingObserver {
-  final OrderRepository orderRepository = OrderRepository();
+  final OrderService _orderService = Get.find<OrderService>();
   late Future<List<OrderModel>> _future;
   bool _isFirstBuild = true;
 
@@ -52,9 +53,7 @@ class _OrderListScreenState extends State<OrderListScreen>
   Future<List<OrderModel>> _loadBuyerOrders() async {
     try {
       // Используем fetchOrdersByRole для получения заказов покупателя
-      final ordersData = await orderRepository.fetchOrdersByRole('buyer');
-      final orders =
-          ordersData.map((data) => OrderModel.fromJson(data)).toList();
+      final orders = await _orderService.getBuyerOrders();
       // Применяем локально сохраненные статусы
       final ordersWithLocalStatuses = _applyLocalStatuses(orders);
 

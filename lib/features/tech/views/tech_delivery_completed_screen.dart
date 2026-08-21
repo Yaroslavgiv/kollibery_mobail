@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../data/sources/api/flight_api.dart';
+import '../../../presentation/managers/device_command_manager.dart';
 import '../../../common/widgets/swipe_confirm_dialog.dart';
 import '../../../data/models/order_model.dart';
-import '../../../data/repositories/order_repository.dart';
-import '../../../data/repositories/order_history_repository.dart';
+import '../../../domain/services/order_service.dart';
 
 class TechDeliveryCompletedScreen extends StatefulWidget {
   const TechDeliveryCompletedScreen({Key? key}) : super(key: key);
@@ -19,8 +18,7 @@ class _TechDeliveryCompletedScreenState
   bool isDroneOpen = false;
   bool isOpeningDrone = false;
   bool isSendingDrone = false;
-  final OrderRepository _orderRepository = OrderRepository();
-  final OrderHistoryRepository _historyRepository = OrderHistoryRepository();
+  final OrderService _orderService = Get.find<OrderService>();
   OrderModel? _orderData;
 
   @override
@@ -227,35 +225,13 @@ class _TechDeliveryCompletedScreenState
 
     try {
       // Вызываем API для открытия/закрытия отсека
-      final response = await FlightApi.openDroneBox(
+      final response = await Get.find<DeviceCommandManager>().openDroneBox(
           !previousState); // Используем предыдущее состояние для запроса
 
-      // Выводим ответ сервера в консоль
-      print('📥 Ответ сервера при управлении грузовым отсеком:');
-      print('   Status Code: ${response.statusCode}');
-      print('   Response Body: ${response.body}');
-      print('   Response Headers: ${response.headers}');
-
-      // Принимаем успешным любой статус от 200 до 299
-      // Также обрабатываем случаи, когда сервер может вернуть другой статус, но операция выполнена
-      final responseBody = response.body.toLowerCase();
-      final isSuccessResponse =
-          response.statusCode >= 200 && response.statusCode < 300;
-      final hasSuccessKeyword = responseBody.contains('успех') ||
-          responseBody.contains('success') ||
-          responseBody.contains('ok') ||
-          responseBody.isEmpty; // Пустой ответ тоже может быть успешным
-
-      if (isSuccessResponse || hasSuccessKeyword) {
-        if (hasSuccessKeyword) {
-          print('✅ Сервер вернул успешный ответ: ${response.body}');
-        }
-
+      if (response) {
         print('✅ Успешно! Состояние подтверждено: isDroneOpen=$isDroneOpen');
-        // Состояние уже обновлено оптимистично, ничего не делаем
       } else {
-        print(
-            '❌ Ошибка при управлении отсеком: ${response.statusCode} - ${response.body}');
+        print('❌ Ошибка при управлении отсеком');
         // Откатываем состояние при ошибке
         if (mounted) {
           setState(() {
@@ -291,7 +267,7 @@ class _TechDeliveryCompletedScreenState
 
     try {
       // Обновляем статус заказа на "delivered"
-      await _orderRepository.updateOrderStatus(
+      await _orderService.updateStatus(
         _orderData!.id.toString(),
         'delivered',
       );
@@ -316,13 +292,13 @@ class _TechDeliveryCompletedScreenState
           productDescription: _orderData!.productDescription,
           productCategory: _orderData!.productCategory,
         );
-        await _historyRepository.saveOrderToTechHistory(orderToSave);
+        await _orderService.archiveTechDelivered(orderToSave);
       } catch (e) {
         print('❌ Ошибка при сохранении заказа в историю техника: $e');
       }
 
       // Удаляем заказ с сервера — он исчезнет из списка заказов (API: DELETE /order/deleteorder/{orderId})
-      await _orderRepository.deleteOrder(_orderData!.id.toString());
+      await _orderService.deleteOrder(_orderData!.id.toString());
 
       // Имитация задержки отправки
       await Future.delayed(Duration(milliseconds: 500));

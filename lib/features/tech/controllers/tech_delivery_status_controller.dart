@@ -1,14 +1,13 @@
 import 'package:get/get.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../../../data/models/order_model.dart';
-import '../../../data/repositories/order_repository.dart';
-import '../../../data/sources/api/flight_api.dart';
+import '../../../domain/services/order_service.dart';
+import '../../../presentation/managers/device_command_manager.dart';
 import '../../../common/widgets/swipe_confirm_dialog.dart';
 
 class TechDeliveryStatusController extends GetxController {
-  final OrderRepository _orderRepository = OrderRepository();
+  final OrderService _orderService = Get.find<OrderService>();
 
   var orders = <OrderModel>[].obs;
   var isLoading = false.obs;
@@ -119,17 +118,11 @@ class TechDeliveryStatusController extends GetxController {
   }
 
   void _openCargoBay() {
-    FlightApi.openDroneBox(true).catchError((e) {
-      print('❌ Ошибка при открытии отсека: $e');
-      return http.Response('', 500);
-    });
+    Get.find<DeviceCommandManager>().openCargoBox();
   }
 
   void _closeCargoBay() {
-    FlightApi.openDroneBox(false).catchError((e) {
-      print('❌ Ошибка при закрытии отсека: $e');
-      return http.Response('', 500);
-    });
+    Get.find<DeviceCommandManager>().closeCargoBox();
   }
 
   void _sendDroneBack() async {
@@ -203,7 +196,7 @@ class TechDeliveryStatusController extends GetxController {
   Future<void> fetchTechOrders() async {
     try {
       isLoading.value = true;
-      final fetchedOrders = await _orderRepository.fetchTechOrdersAsModels();
+      final fetchedOrders = await _orderService.getTechOrders();
       orders.value = fetchedOrders;
     } catch (e) {
     } finally {

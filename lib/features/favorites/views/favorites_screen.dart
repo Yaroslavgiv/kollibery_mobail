@@ -11,8 +11,8 @@ import '../../home/models/product_model.dart';
 
 class FavoritesScreen extends StatelessWidget {
   final FavoritesController favoritesController =
-      Get.put(FavoritesController());
-  final CartController cartController = Get.put(CartController());
+      Get.find<FavoritesController>();
+  final CartController cartController = Get.find<CartController>();
 
   @override
   Widget build(BuildContext context) {

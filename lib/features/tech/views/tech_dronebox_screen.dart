@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../common/widgets/swipe_confirm_dialog.dart';
-import '../../../data/sources/api/flight_api.dart';
+import '../../../presentation/managers/device_command_manager.dart';
 import '../controllers/dronebox_status_controller.dart';
 
 class TechDroneboxScreen extends StatefulWidget {
@@ -230,9 +230,8 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                         onConfirm: () async {
                           setState(() => isControllingRoof = true);
                           try {
-                            final response = await FlightApi.controlRoof(true);
-                            if (response.statusCode >= 200 &&
-                                response.statusCode < 300) {
+                            final response = await Get.find<DeviceCommandManager>().controlRoof(true);
+                            if (response) {
                               setState(() => isRoofOpen = true);
                             }
                           } catch (e) {
@@ -260,9 +259,8 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                         onConfirm: () async {
                           setState(() => isControllingRoof = true);
                           try {
-                            final response = await FlightApi.controlRoof(false);
-                            if (response.statusCode >= 200 &&
-                                response.statusCode < 300) {
+                            final response = await Get.find<DeviceCommandManager>().controlRoof(false);
+                            if (response) {
                               setState(() => isRoofOpen = false);
                             }
                           } catch (e) {
@@ -302,9 +300,8 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                           setState(() => isControllingPosition = true);
                           try {
                             final response =
-                                await FlightApi.controlPosition(true);
-                            if (response.statusCode >= 200 &&
-                                response.statusCode < 300) {
+                                await Get.find<DeviceCommandManager>().controlPosition(true);
+                            if (response) {
                               setState(() => isPositionCenter = true);
                             }
                           } catch (e) {
@@ -333,9 +330,8 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                           setState(() => isControllingPosition = true);
                           try {
                             final response =
-                                await FlightApi.controlPosition(false);
-                            if (response.statusCode >= 200 &&
-                                response.statusCode < 300) {
+                                await Get.find<DeviceCommandManager>().controlPosition(false);
+                            if (response) {
                               setState(() => isPositionCenter = false);
                             }
                           } catch (e) {
@@ -374,9 +370,8 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                         onConfirm: () async {
                           setState(() => isControllingTable = true);
                           try {
-                            final response = await FlightApi.controlTable(true);
-                            if (response.statusCode >= 200 &&
-                                response.statusCode < 300) {
+                            final response = await Get.find<DeviceCommandManager>().controlTable(true);
+                            if (response) {
                               setState(() => isTableUp = true);
                             }
                           } catch (e) {
@@ -405,9 +400,8 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                           setState(() => isControllingTable = true);
                           try {
                             final response =
-                                await FlightApi.controlTable(false);
-                            if (response.statusCode >= 200 &&
-                                response.statusCode < 300) {
+                                await Get.find<DeviceCommandManager>().controlTable(false);
+                            if (response) {
                               setState(() => isTableUp = false);
                             }
                           } catch (e) {
@@ -446,9 +440,8 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                         onConfirm: () async {
                           setState(() => isControllingHatch = true);
                           try {
-                            final response = await FlightApi.controlHatch(true);
-                            if (response.statusCode >= 200 &&
-                                response.statusCode < 300) {
+                            final response = await Get.find<DeviceCommandManager>().controlHatch(true);
+                            if (response) {
                               setState(() => isHatchOpen = true);
                             }
                           } catch (e) {
@@ -477,9 +470,8 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                           setState(() => isControllingHatch = true);
                           try {
                             final response =
-                                await FlightApi.controlHatch(false);
-                            if (response.statusCode >= 200 &&
-                                response.statusCode < 300) {
+                                await Get.find<DeviceCommandManager>().controlHatch(false);
+                            if (response) {
                               setState(() => isHatchOpen = false);
                             }
                           } catch (e) {
@@ -537,10 +529,9 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                                           () => isControllingDroneBattery = true);
                                       try {
                                         final response =
-                                            await FlightApi.controlDroneBattery(
+                                            await Get.find<DeviceCommandManager>().controlDroneBattery(
                                                 true);
-                                        if (response.statusCode >= 200 &&
-                                            response.statusCode < 300) {
+                                        if (response) {
                                           setState(() =>
                                               batteryStates[0] = 'УСТАНОВЛЕН');
                                         }
@@ -580,9 +571,8 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                               setState(() => isControllingDroneBattery = true);
                               try {
                                 final response =
-                                    await FlightApi.controlDroneBattery(false);
-                                if (response.statusCode >= 200 &&
-                                    response.statusCode < 300) {
+                                    await Get.find<DeviceCommandManager>().controlDroneBattery(false);
+                                if (response) {
                                   setState(() => batteryStates[0] = 'НЕТ');
                                 }
                               } catch (e) {
@@ -616,12 +606,11 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                               onConfirm: () async {
                                 setState(() => isControllingDroneBattery = true);
                                 try {
-                                  final response = await FlightApi
+                                  final response = await Get.find<DeviceCommandManager>()
                                       .controlDroneBatteryCharger(
                                     isCharging: false,
                                   );
-                                  if (response.statusCode >= 200 &&
-                                      response.statusCode < 300) {
+                                  if (response) {
                                     setState(() => batteryStates[0] = 'УСТАНОВЛЕН');
                                   }
                                 } catch (e) {
@@ -644,12 +633,11 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                               onConfirm: () async {
                                 setState(() => isControllingDroneBattery = true);
                                 try {
-                                  final response = await FlightApi
+                                  final response = await Get.find<DeviceCommandManager>()
                                       .controlDroneBatteryCharger(
                                     isCharging: true,
                                   );
-                                  if (response.statusCode >= 200 &&
-                                      response.statusCode < 300) {
+                                  if (response) {
                                     setState(() => batteryStates[0] = 'ЗАРЯД');
                                   }
                                 } catch (e) {
@@ -723,12 +711,11 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                                         isControllingBatteries[index] = true);
                                     try {
                                       final response =
-                                          await FlightApi.controlBoxBattery(
+                                          await Get.find<DeviceCommandManager>().controlBoxBattery(
                                         batteryNumber: batteryNum,
                                         isInstall: true,
                                       );
-                                      if (response.statusCode >= 200 &&
-                                          response.statusCode < 300) {
+                                      if (response) {
                                         setState(() =>
                                             batteryStates[batteryNum] =
                                                 'УСТАНОВЛЕН');
@@ -762,12 +749,11 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                                         isControllingBatteries[index] = true);
                                     try {
                                       final response =
-                                          await FlightApi.controlBoxBattery(
+                                          await Get.find<DeviceCommandManager>().controlBoxBattery(
                                         batteryNumber: batteryNum,
                                         isInstall: false,
                                       );
-                                      if (response.statusCode >= 200 &&
-                                          response.statusCode < 300) {
+                                      if (response) {
                                         setState(() =>
                                             batteryStates[batteryNum] = 'НЕТ');
                                       }
@@ -804,13 +790,12 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                                     setState(() =>
                                         isControllingBatteries[index] = true);
                                     try {
-                                      final response = await FlightApi
+                                      final response = await Get.find<DeviceCommandManager>()
                                           .controlBoxBatteryCharger(
                                         batteryNumber: batteryNum,
                                         isCharging: false,
                                       );
-                                      if (response.statusCode >= 200 &&
-                                          response.statusCode < 300) {
+                                      if (response) {
                                         setState(() =>
                                             batteryStates[batteryNum] =
                                                 'УСТАНОВЛЕН');
@@ -838,13 +823,12 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                                     setState(() =>
                                         isControllingBatteries[index] = true);
                                     try {
-                                      final response = await FlightApi
+                                      final response = await Get.find<DeviceCommandManager>()
                                           .controlBoxBatteryCharger(
                                         batteryNumber: batteryNum,
                                         isCharging: true,
                                       );
-                                      if (response.statusCode >= 200 &&
-                                          response.statusCode < 300) {
+                                      if (response) {
                                         setState(() =>
                                             batteryStates[batteryNum] = 'ЗАРЯД');
                                       }
@@ -900,7 +884,7 @@ class _TechDroneboxScreenState extends State<TechDroneboxScreen> {
                   onConfirm: () async {
                     setState(() => isStopping = true);
                     try {
-                      await FlightApi.droneboxStop();
+                      await Get.find<DeviceCommandManager>().droneboxStop();
                     } catch (e) {
                     } finally {
                       if (mounted) setState(() => isStopping = false);

@@ -4,9 +4,8 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:kollibry/common/themes/theme.dart';
 import 'package:kollibry/routes/app_routes.dart';
-import '../../../data/repositories/order_repository.dart';
-import '../../../data/repositories/product_repository.dart';
-import '../../../data/repositories/order_history_repository.dart';
+import '../../../domain/services/order_service.dart';
+import '../../../presentation/managers/catalog_manager.dart';
 import '../../../data/models/order_model.dart';
 import '../../home/models/product_model.dart';
 import '../widgets/seller_product_card.dart';
@@ -26,7 +25,7 @@ class SellerMainScreen extends StatefulWidget {
 class _SellerMainScreenState extends State<SellerMainScreen> {
   int _currentIndex = 0;
   final GetStorage box = GetStorage();
-  final AuthController authController = Get.put(AuthController());
+  final AuthController authController = Get.find<AuthController>();
   // Пытаемся найти существующий контроллер, если нет - создаем новый
   late final ProfileController profileController;
 
@@ -37,11 +36,7 @@ class _SellerMainScreenState extends State<SellerMainScreen> {
   void initState() {
     super.initState();
     // Пытаемся найти существующий контроллер, если нет - создаем новый
-    try {
-      profileController = Get.find<ProfileController>();
-    } catch (e) {
-      profileController = Get.put(ProfileController());
-    }
+    profileController = Get.find<ProfileController>();
 
     _pages = [
       SellerProductsScreen(),
@@ -279,7 +274,7 @@ class SellerProductsScreen extends StatefulWidget {
 
 class _SellerProductsScreenState extends State<SellerProductsScreen>
     with WidgetsBindingObserver {
-  final ProductRepository productRepository = ProductRepository();
+  final CatalogManager catalogManager = Get.find<CatalogManager>();
   late Future<List<ProductModel>> _productsFuture;
   bool _isFirstBuild = true;
 
@@ -287,7 +282,7 @@ class _SellerProductsScreenState extends State<SellerProductsScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _productsFuture = productRepository.getProducts();
+    _productsFuture = catalogManager.fetchProducts();
   }
 
   @override
@@ -316,7 +311,7 @@ class _SellerProductsScreenState extends State<SellerProductsScreen>
 
   void _refreshProducts() {
     setState(() {
-      _productsFuture = productRepository.getProducts();
+      _productsFuture = catalogManager.fetchProducts();
     });
   }
 
@@ -427,8 +422,7 @@ class SellerOrdersScreen extends StatefulWidget {
 
 class _SellerOrdersScreenState extends State<SellerOrdersScreen>
     with WidgetsBindingObserver {
-  final OrderRepository orderRepository = OrderRepository();
-  final OrderHistoryRepository historyRepository = OrderHistoryRepository();
+  final OrderService _orderService = Get.find<OrderService>();
   late Future<List<OrderModel>> _future;
   bool _isFirstBuild = true;
 
@@ -436,7 +430,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _future = orderRepository.fetchSellerOrdersAsModels().then((orders) {
+    _future = _orderService.getSellerOrders().then((orders) {
       orders.sort((a, b) => (b.createdAt ?? DateTime(1970))
           .compareTo(a.createdAt ?? DateTime(1970)));
       return orders;
@@ -482,7 +476,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen>
   Future<void> _refresh() async {
     print('🔄 Обновление списка заказов продавца...');
     setState(() {
-      _future = orderRepository.fetchSellerOrdersAsModels().then((orders) {
+      _future = _orderService.getSellerOrders().then((orders) {
         print(
             '✅ Загружено ${orders.length} заказов для продавца (GET /order/getorders)');
         print(
@@ -711,7 +705,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen>
         productDescription: order.productDescription,
         productCategory: order.productCategory,
       );
-      await historyRepository.saveOrderToHistory(orderToSave);
+      await _orderService.archiveDelivered(orderToSave);
       Get.toNamed('/seller-pickup-location', arguments: order);
     } catch (e) {
       print('❌ Ошибка при сохранении заказа в историю: $e');

@@ -6,7 +6,7 @@ import "package:get/get.dart";
 import "package:location/location.dart";
 import "package:http/http.dart" as http;
 import "../../../data/models/order_model.dart";
-import "../../../data/sources/api/flight_api.dart";
+import '../../../presentation/managers/device_command_manager.dart';
 
 /// Экран выбора точки отправки заказа для продавца
 class SellerPickupLocationScreen extends StatefulWidget {
@@ -150,20 +150,15 @@ class _SellerPickupLocationScreenState
 
     try {
       // Отправляем геолокацию на сервер через API
-      final response = await FlightApi.confirmNeoLocation(
+      final response = await Get.find<DeviceCommandManager>().confirmNeoLocation(
         orderId: widget.orderData.id,
         latitude: _pickupMarker!.point.latitude,
         longitude: _pickupMarker!.point.longitude,
       );
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        print('✅ Геолокация успешно отправлена на сервер');
-        print('✅ Переход на экран статуса заказа с данными: ${widget.orderData.id}');
+      if (response) {
         Get.toNamed("/seller-order-status", arguments: widget.orderData);
       } else {
-        print('❌ Ошибка отправки геолокации: ${response.statusCode}');
-        print('Response: ${response.body}');
-        // Показываем ошибку пользователю
         Get.snackbar(
           'Ошибка',
           'Не удалось отправить геолокацию. Попробуйте еще раз.',

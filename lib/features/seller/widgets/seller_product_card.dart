@@ -6,7 +6,7 @@ import '../../../features/home/models/product_model.dart';
 import '../../../features/buyer/product_card/views/product_card_screen.dart';
 import '../../../utils/device/screen_util.dart';
 import '../../../utils/helpers/hex_image.dart';
-import '../../../data/repositories/product_repository.dart';
+import '../../../presentation/managers/catalog_manager.dart';
 
 class SellerProductCard extends StatelessWidget {
   final ProductModel product;
@@ -52,8 +52,8 @@ class SellerProductCard extends StatelessWidget {
 
     if (confirmed == true) {
       try {
-        final repository = ProductRepository();
-        final success = await repository.deleteProduct(product.id);
+        final catalogManager = Get.find<CatalogManager>();
+        final success = await catalogManager.deleteProduct(product.id);
         if (success) {
           onDeleted?.call();
           if (context.mounted) {

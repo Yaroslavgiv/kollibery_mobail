@@ -12,7 +12,7 @@ import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
 
 class LoginScreen extends StatelessWidget {
-  final AuthController authController = Get.put(AuthController());
+  final AuthController authController = Get.find<AuthController>();
 
   @override
   Widget build(BuildContext context) {

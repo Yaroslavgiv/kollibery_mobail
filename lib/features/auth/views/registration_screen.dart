@@ -11,7 +11,7 @@ import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
 
 class RegistrationScreen extends StatelessWidget {
-  final AuthController authController = Get.put(AuthController());
+  final AuthController authController = Get.find<AuthController>();
 
   RegistrationScreen({super.key});
 

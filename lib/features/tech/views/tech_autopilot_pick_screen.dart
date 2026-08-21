@@ -4,7 +4,9 @@ import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
 
-import '../../../data/repositories/flight_repository.dart';
+import '../../../domain/entities/geo_point.dart';
+import '../../../domain/entities/user_role.dart';
+import '../../../domain/services/flight_service.dart';
 
 class TechAutopilotPickScreen extends StatefulWidget {
   @override
@@ -17,7 +19,7 @@ class _TechAutopilotPickScreenState extends State<TechAutopilotPickScreen> {
   final TextEditingController _latCtrl = TextEditingController();
   final TextEditingController _lonCtrl = TextEditingController();
   final Location _location = Location();
-  final FlightRepository _flightRepository = FlightRepository();
+  final FlightService _flightService = Get.find<FlightService>();
 
   LatLng _center = LatLng(59.9343, 30.3351);
   LatLng? _startPoint; // Точка старта (текущее местоположение)
@@ -121,47 +123,23 @@ class _TechAutopilotPickScreenState extends State<TechAutopilotPickScreen> {
 
     setState(() => _sending = true);
     try {
-      // Преобразуем промежуточные точки в формат для API
-      List<Map<String, double>>? waypoints;
-      if (_waypoints.isNotEmpty) {
-        waypoints = _waypoints
-            .map((point) => {
-                  'latitude': point.latitude,
-                  'longitude': point.longitude,
-                })
-            .toList();
-      }
-
-      // Формируем точки маршрута: старт + промежуточные + финиш
-      // Используем явный тип Map<String, double> для совместимости с API
-      final Map<String, double> startPointMap = {
-        'latitude': _startPoint!.latitude,
-        'longitude': _startPoint!.longitude,
-      };
-      
-      final Map<String, double> endPointMap = {
-        'latitude': _endPoint!.latitude,
-        'longitude': _endPoint!.longitude,
-      };
-
-      // Отправляем все точки в массиве в /flight/orderlocation
-      final orderLocationResp = await _flightRepository.sendOrderLocation(
-        startPoint: startPointMap,
-        buyerPoint: endPointMap,
-        waypoints: waypoints,
+      final orderLocationOk = await _flightService.sendLandingPoint(
+        role: UserRole.technician,
+        point: GeoPoint(
+          latitude: _endPoint!.latitude,
+          longitude: _endPoint!.longitude,
+        ),
+        startPoint: GeoPoint(
+          latitude: _startPoint!.latitude,
+          longitude: _startPoint!.longitude,
+        ),
+        waypoints: _waypoints
+            .map((p) => GeoPoint(latitude: p.latitude, longitude: p.longitude))
+            .toList(),
       );
 
-      final orderLocationOk = orderLocationResp.statusCode >= 200 &&
-          orderLocationResp.statusCode < 300;
-      
       if (orderLocationOk) {
         Get.back();
-      } else {
-        // Показываем подробную информацию об ошибке
-        print('Ошибка отправки маршрута:');
-        print('Status Code: ${orderLocationResp.statusCode}');
-        print('Response Body: ${orderLocationResp.body}');
-        print('Response Headers: ${orderLocationResp.headers}');
       }
     } catch (e) {
     } finally {

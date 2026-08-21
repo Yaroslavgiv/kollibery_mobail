@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../data/repositories/product_repository.dart';
+import '../../../presentation/managers/catalog_manager.dart';
 import '../../home/widgets/product_grid.dart';
 import '../../home/models/product_model.dart';
 import 'tech_product_card_screen.dart';
@@ -11,18 +11,18 @@ class TechProductsScreen extends StatefulWidget {
 }
 
 class _TechProductsScreenState extends State<TechProductsScreen> {
-  final ProductRepository productRepository = ProductRepository();
+  final CatalogManager catalogManager = Get.find<CatalogManager>();
   late Future<List<ProductModel>> _productsFuture;
 
   @override
   void initState() {
     super.initState();
-    _productsFuture = productRepository.getProducts();
+    _productsFuture = catalogManager.fetchProducts();
   }
 
   void _refreshProducts() {
     setState(() {
-      _productsFuture = productRepository.getProducts();
+      _productsFuture = catalogManager.fetchProducts();
     });
   }
 

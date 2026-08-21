@@ -1,10 +1,13 @@
 import 'package:get/get.dart';
 import '../../../data/models/order_model.dart';
-import '../../../data/repositories/order_repository.dart';
+import '../../../domain/services/order_service.dart';
 
-/// Контроллер для управления заказами
+/// Manager заказов. View не обращается к репозиторию.
 class OrdersController extends GetxController {
-  final OrderRepository _orderRepository = OrderRepository();
+  OrdersController({OrderService? orderService})
+      : _orderService = orderService ?? Get.find<OrderService>();
+
+  final OrderService _orderService;
 
   // Список всех заказов
   var orders = <OrderModel>[].obs;
@@ -42,7 +45,7 @@ class OrdersController extends GetxController {
   Future<void> loadOrders() async {
     try {
       isLoading.value = true;
-      final ordersList = await _orderRepository.fetchOrdersAsModels();
+      final ordersList = await _orderService.getBuyerOrders();
       orders.value = ordersList;
       print(
           '✅ Загружено ${ordersList.length} заказов с полной информацией о товарах');
@@ -57,7 +60,7 @@ class OrdersController extends GetxController {
   Future<void> loadSellerOrders() async {
     try {
       isLoading.value = true;
-      final ordersList = await _orderRepository.fetchSellerOrdersAsModels();
+      final ordersList = await _orderService.getSellerOrders();
       sellerOrders.value = ordersList;
     } catch (e) {
     } finally {
@@ -69,7 +72,7 @@ class OrdersController extends GetxController {
   Future<void> loadTechOrders() async {
     try {
       isLoading.value = true;
-      final ordersList = await _orderRepository.fetchTechOrdersAsModels();
+      final ordersList = await _orderService.getTechOrders();
       techOrders.value = ordersList;
     } catch (e) {
     } finally {
@@ -87,7 +90,7 @@ class OrdersController extends GetxController {
   }) async {
     try {
       isLoading.value = true;
-      final success = await _orderRepository.placeOrder(
+      final success = await _orderService.placeOrder(
         userId: userId,
         productId: productId,
         quantity: quantity,

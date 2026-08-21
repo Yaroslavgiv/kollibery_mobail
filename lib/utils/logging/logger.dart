@@ -8,7 +8,7 @@ class KLoggerHelper {
       lineLength: 120, // Width of each log line
       colors: true, // Colorful log messages
       printEmojis: true, // Print emojis for log levels
-      printTime: true, // Print timestamps
+      dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
     ),
     level: Level.debug, // Set default log level
   );

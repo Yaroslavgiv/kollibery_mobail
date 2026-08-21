@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../../common/styles/colors.dart';
 import '../../../common/themes/text_theme.dart';
 import '../../../data/models/order_model.dart';
-import '../../../data/repositories/order_repository.dart';
-import '../../../data/repositories/order_history_repository.dart';
+import '../../../domain/services/order_service.dart';
 import '../../../utils/device/screen_util.dart';
 import '../../../utils/helpers/hex_image.dart';
 
@@ -15,8 +15,7 @@ class OrderHistoryScreen extends StatefulWidget {
 }
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
-  final OrderRepository _orderRepository = OrderRepository();
-  final OrderHistoryRepository _historyRepository = OrderHistoryRepository();
+  final OrderService _orderService = Get.find<OrderService>();
   List<OrderModel> _historyOrders = [];
   bool _isLoading = true;
 
@@ -31,12 +30,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     setState(() => _isLoading = true);
     
     // Сначала загружаем локальную историю для быстрого отображения
-    final localHistory = _historyRepository.getOrderHistory();
+    final localHistory = _orderService.sellerHistory();
     
     try {
       // Пытаемся загрузить историю с сервера
       final serverHistory =
-          await _orderRepository.fetchLastFiveOrdersAsModels();
+          await _orderService.getLastFiveOrders();
       
       // Объединяем локальную и серверную историю, убираем дубликаты
       final allHistory = <OrderModel>[];

@@ -6,7 +6,7 @@ import '../../../utils/device/screen_util.dart';
 import '../widgets/banner_carousel.dart';
 import '../widgets/category_list.dart';
 import '../widgets/product_grid.dart'; // Адаптивность
-import '../../../data/repositories/auth_repository.dart';
+import '../../../presentation/managers/catalog_manager.dart';
 import '../models/product_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 
@@ -42,7 +42,7 @@ class HomePage extends StatelessWidget {
     },
   ];
 
-  final ProductRepository productRepository = ProductRepository();
+  final CatalogManager catalogManager = Get.find<CatalogManager>();
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +91,7 @@ class HomePage extends StatelessWidget {
                 //         25)), // Отступ после категорий
                 // Товары
                 FutureBuilder<List<ProductModel>>(
-                  future: productRepository.getProducts(),
+                  future: catalogManager.fetchProducts(),
                   builder: (context, snapshot) {
                     print(
                         'FutureBuilder состояние: ${snapshot.connectionState}');

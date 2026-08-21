@@ -37,11 +37,7 @@ class _TechMainScreenState extends State<TechMainScreen> {
   void initState() {
     super.initState();
     // Пытаемся найти существующий контроллер, если нет - создаем новый
-    try {
-      profileController = Get.find<ProfileController>();
-    } catch (e) {
-      profileController = Get.put(ProfileController());
-    }
+    profileController = Get.find<ProfileController>();
     
     // Загружаем данные профиля при инициализации экрана
     WidgetsBinding.instance.addPostFrameCallback((_) {
