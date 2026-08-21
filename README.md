@@ -1,326 +1,208 @@
-# Kollibry - приложение доставки дронами
+# Kollibry
 
-## 📋 Описание
+Мобильное приложение доставки дронами. Три роли: **покупатель** (`buyer`), **продавец** (`seller`) и **техник** (`technician`). Стек: Flutter 3.6+, GetX, GetStorage, Dio/http, flutter_map.
 
-Kollibry - это мобильное приложение для заказа товаров с доставкой дронами. Приложение поддерживает три роли пользователей: покупатель, продавец и техник. Построено на Flutter с использованием GetX для управления состоянием.
+Репозиторий: [Yaroslavgiv/kollibery_mobail](https://github.com/Yaroslavgiv/kollibery_mobail)
 
-## 🏗️ Архитектура
+## Возможности по ролям
 
-Проект приведён к Clean Architecture с иерархией платы разработки:
+### Покупатель
 
-`Repository → Service → Provider → Manager → UI`
+- В каталоге заказывает **один товар** за раз.
+- На карте выбирает точку посадки дрона; координаты уходят на сервер с пометкой покупателя.
+- Отслеживает статус заказа по SSE (`/order/sseorders/{orderId}`).
+- После посадки открывает грузовой бокс дрона.
 
-- **Repository** — доступ к API и локальному хранилищу. UI его не вызывает.
-- **Service** — бизнес-сценарии (заказ одного товара, роли, люк, дронбокс). Без Flutter-виджетов.
-- **Provider** — состояние сессии (`SessionProvider`).
-- **Manager** — GetX-контроллеры, единственная точка входа для View.
-- **UI** — экраны ролей покупатель / продавец / техник.
+### Продавец
+
+- Две основные вкладки: товары и заказы. Каждый заказ отправляется отдельно.
+- Вызывает дрон, указывает точку посадки (пометка продавца).
+- Статусы: дрон вылетел → дрон прилетел → открытие люка → отправка.
+- После того как покупатель забрал товар, заказ уходит из списка (с кратким уведомлением).
+
+### Техник
+
+- Может и заказать товар (как покупатель), и отправить (как продавец) — с указанием геолокации.
+- Управление грузовым люком дрона (открыть / закрыть).
+- Управление дронбоксом: крыша, платформа (подъём / опускание), люк, батареи, зарядка.
+
+Роль читается из JWT и задаёт стартовый маршрут (`/home`, `/seller-home`, `/tech-home`).
+
+## Архитектура
+
+Clean Architecture и иерархия платы разработки:
+
+```
+Repository → Service → Provider → Manager → UI
+```
+
+| Слой | Что делает | Куда инжектируется |
+| --- | --- | --- |
+| **Repository** | API и локальное хранилище | Service, Provider, Manager |
+| **Service** | Бизнес-сценарии без виджетов (заказ одного товара, точка посадки, люк, дронбокс) | Provider, Manager |
+| **Provider** | Состояние сессии (`SessionProvider`) | только Manager |
+| **Manager** | GetX-контроллеры — единственная точка входа для View | никуда |
+| **UI** | Экраны ролей | вызывает только Manager |
+
+View **не** вызывает `FlightApi`, `OrderApi` и репозитории напрямую.
+
+Принципы: SOLID, KISS, DRY, инверсия зависимостей, комментарии в коде на русском.
+
+### Структура `lib/`
 
 ```
 lib/
-├── core/                 # сеть, DI, ошибки, хранилище, логгер
-├── domain/               # сущности, контракты репозиториев, сервисы
-├── data/                 # реализации репозиториев и API
-├── presentation/         # SessionProvider, CatalogManager, DeviceCommandManager
-└── features/             # экраны и GetX-менеджеры ролей
+├── main.dart                 # точка входа, AppBindings до runApp
+├── app.dart                  # GetMaterialApp, стартовый маршрут из SessionProvider
+├── core/                     # сеть, DI, ошибки, хранилище, логгер, JWT
+│   ├── constants/storage_keys.dart
+│   ├── di/app_bindings.dart
+│   ├── errors/               # Failures, Exceptions
+│   ├── logging/app_logger.dart
+│   ├── network/api_client.dart
+│   ├── storage/local_storage.dart
+│   └── utils/jwt_decoder.dart
+├── domain/                   # сущности, контракты, сервисы (без Flutter-виджетов)
+│   ├── entities/             # UserRole, GeoPoint, UserEntity, ProductEntity, OrderEntity
+│   ├── repositories/         # интерфейсы
+│   └── services/             # AuthService, ProductService, OrderService, FlightService
+├── data/                     # реализации репозиториев, DTO, API
+│   ├── models/               # ProductModel, OrderModel
+│   ├── repositories/         # *Impl
+│   └── sources/api/          # HTTP, SSE, WebSocket статусов
+├── presentation/             # слой BL для UI
+│   ├── providers/session_provider.dart
+│   └── managers/             # CatalogManager, DeviceCommandManager
+├── features/                 # экраны и GetX-менеджеры ролей
+│   ├── auth/
+│   ├── onboarding/
+│   ├── home/                 # каталог покупателя
+│   ├── cart/
+│   ├── favorites/
+│   ├── orders/
+│   ├── profile/
+│   ├── seller/
+│   └── tech/
+├── common/                   # темы, цвета, размеры, виджеты
+├── routes/app_routes.dart
+└── utils/                    # константы API, ScreenUtil, DateFormatter
 ```
 
-- **Flutter** - кроссплатформенная разработка
-- **GetX** - управление состоянием и навигация
-- **GetStorage** - локальное хранение данных
-- **HTTP/Dio** - работа с API
-- **Flutter Map** - карты и геолокация
+DI регистрируется в `AppBindings` до `runApp`.
 
-### Архитектурные паттерны
+## Стек
 
-- **Repository Pattern** - абстракция работы с данными
-- **MVC Pattern** - разделение логики, представления и данных
-- **Dependency Injection** - через GetX bindings
+| Пакет | Назначение |
+| --- | --- |
+| `get` | состояние, навигация, DI |
+| `get_storage` | локальное хранилище (токен, роль, история) |
+| `dio` / `http` | HTTP-клиент, Bearer-interceptor |
+| `logger` | логирование |
+| `flutter_map` + `latlong2` + `location` | карта и геолокация |
+| `web_socket_channel` | статус дрона и дронбокса |
+| `permission_handler` | разрешения |
+| `image_picker` | фото товаров |
 
-### Структура проекта
+Версия приложения: `0.1.0` (`pubspec.yaml`). SDK: Dart `^3.6.0`.
 
-```
-lib/
-├── app.dart                    # Главный класс приложения
-├── main.dart                   # Точка входа
-├── bindings/                   # DI контейнеры
-├── common/                     # Общие компоненты
-│   ├── styles/                # Цвета, размеры, изображения
-│   ├── themes/                # Темы приложения
-│   └── widgets/               # Переиспользуемые виджеты
-├── data/                      # Слой данных
-│   ├── models/                # Модели данных
-│   ├── repositories/          # Репозитории
-│   └── sources/               # API и локальные источники
-├── features/                  # Функциональные модули
-│   ├── auth/                  # Аутентификация
-│   ├── home/                  # Главная страница
-│   ├── cart/                  # Корзина
-│   ├── orders/                # Заказы
-│   ├── profile/               # Профиль
-│   ├── seller/                # Функции продавца
-│   ├── tech/                  # Функции техника
-│   └── admin/                 # Административные функции
-├── routes/                    # Маршрутизация
-├── utils/                     # Утилиты
-└── localizations/             # Локализация
-```
+## Запуск
 
-## 👥 Роли пользователей
+Требования: Flutter SDK 3.6+, Android Studio / VS Code, Git.
 
-### Покупатель (buyer)
-
-- Просмотр каталога товаров
-- Добавление товаров в корзину
-- Оформление заказов с выбором точки доставки
-- Отслеживание статуса доставки
-- Управление избранными товарами
-
-### Продавец (seller)
-
-- Просмотр своих товаров
-- Просмотр заказов от покупателей
-- Управление статусами заказов
-- Выбор точки отправки товара
-
-### Техник (tech)
-
-- Просмотр заказов для технической обработки
-- Детальная информация о заказах
-- Обновление статусов заказов
-- Управление дронами и доставкой
-
-## 🚀 Установка и запуск
-
-### Требования
-
-- Flutter SDK 3.6.0+
-- Dart SDK
-- Android Studio / VS Code
-- Git
-
-### Установка
-
-1. Клонируйте репозиторий:
 ```bash
 git clone https://github.com/Yaroslavgiv/kollibery_mobail.git
-cd kollibry
-```
-
-2. Установите зависимости:
-```bash
+cd kollibery_mobail
 flutter pub get
-```
-
-3. Настройте платформы:
-```bash
-flutter create --platforms=android,ios .
-```
-
-4. Запустите приложение:
-```bash
 flutter run
 ```
 
-### Конфигурация
+Сборка:
 
-- **API Base URL**: `http://80.90.191.66`
-- **Локальное хранилище**: GetStorage
-- **Карты**: Flutter Map с OpenStreetMap
-
-## 📱 Основные экраны
-
-### Аутентификация
-
-- **LoginScreen** - вход в систему
-- **RegistrationScreen** - регистрация
-- **ForgotPasswordScreen** - восстановление пароля
-
-### Главные экраны
-
-- **MainScreen** - главный экран покупателя
-- **SellerMainScreen** - главный экран продавца
-- **TechMainScreen** - главный экран техника
-
-### Функциональные экраны
-
-- **HomeScreen** - каталог товаров
-- **CartScreen** - корзина покупок
-- **OrderListScreen** - список заказов
-- **DeliveryStatusScreen** - статус доставки
-- **ProfileScreen** - профиль пользователя
-
-## 🔌 API Endpoints
-
-### Базовый URL
-
-```
-http://80.90.191.66
+```bash
+flutter build apk --release
+flutter build ios --release
 ```
 
-### Заказы
+Анализ и тесты:
 
-- `POST /order/placeorder` - создание заказа
-- `GET /order/getorders` - получение заказов
-- `GET /order/getproducts` - получение товаров
-- `GET /order/sseorders/{orderId}` - подписка на статус заказа
+```bash
+flutter analyze
+flutter test
+```
 
-### Полеты
+Юнит-тесты (без виджетов экранов):
 
-- `GET /flight/orderlocation` - получение местоположения заказа
+- `test/core/jwt_decoder_test.dart`
+- `test/domain/entities/user_role_test.dart`
+- `test/domain/entities/geo_point_test.dart`
+- `test/domain/services/auth_service_test.dart`
+- `test/domain/services/flight_service_test.dart`
 
-### Структура заказа
+## API
+
+Базовый URL задаётся в `lib/utils/constants/api_constants.dart`.
+
+```
+HTTP: http://81.3.182.146
+WS:   ws://81.3.182.146
+```
+
+### Заказы и каталог
+
+| Метод | Путь | Назначение |
+| --- | --- | --- |
+| `POST` | `/order/placeorder` | создать заказ |
+| `GET` | `/order/getorders` | список заказов |
+| `GET` | `/order/getproducts` | каталог |
+| `GET` | `/order/getlastfiveorders` | последние заказы |
+| `GET` | `/order/sseorders/{orderId}` | SSE статуса |
+| `POST` | `/order/updatestatus` | обновить статус |
+| `POST` | `/order/creatproduct` | создать товар |
+| `POST` | `/order/deleteproduct` | удалить товар |
+| `POST` | `/order/deleteorder` | удалить заказ |
+
+### Полёт
+
+| Метод | Путь | Назначение |
+| --- | --- | --- |
+| `POST` | `/flight/orderlocation` | точка посадки (buyer / seller) |
+
+Тело заказа на сервер:
 
 ```json
 {
   "userId": "string",
   "productId": 0,
-  "quantity": 0,
+  "quantity": 1,
   "deliveryLatitude": 0.0,
   "deliveryLongitude": 0.0
 }
 ```
 
-## 🗂️ Модели данных
+### WebSocket
 
-### OrderModel
+| URL | Назначение |
+| --- | --- |
+| `ws://81.3.182.146/ws/status` | статус дрона |
+| `ws://81.3.182.146/ws/statusdb` | статус дронбокса |
 
-```dart
-class OrderModel {
-  final int id;
-  final String userId;
-  final int productId;
-  final int quantity;
-  final double deliveryLatitude;
-  final double deliveryLongitude;
-  final String status;
-  final String productName;
-  final String productImage;
-  final double price;
-  final String buyerName;
-  final String sellerName;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
-}
-```
+Токен хранится в GetStorage и подставляется в `ApiClient` как Bearer.
 
-## 🎨 Темы и стили
+## Экраны
 
-### Цветовая схема
+| Роль | Ключевые экраны |
+| --- | --- |
+| Общие | `LoginScreen`, `RegistrationScreen`, `ForgotPasswordScreen`, `OnboardingScreen`, `ProfileScreen` |
+| Покупатель | `MainScreen`, `HomeScreen`, `CartScreen`, `DeliveryPointScreen`, `DeliveryStatusScreen`, `DeliveryCompletedScreen` |
+| Продавец | `SellerMainScreen`, `SellerPickupLocationScreen`, `SellerOrderStatusScreen`, `SellerOrderCompletedScreen`, `AddEditProductScreen` |
+| Техник | `TechMainScreen`, `TechPickupLocationScreen`, `TechDeliveryStatusScreen`, `TechDroneScreen`, `TechDroneboxScreen` |
 
-- **Primary**: основной цвет приложения
-- **Secondary**: дополнительный цвет
-- **Text Primary/Secondary**: цвета текста
-- **Background**: фоновые цвета
+Маршруты — в `lib/routes/app_routes.dart`.
 
-### Адаптивность
+## Как развивать код
 
-- Поддержка различных размеров экранов
-- Responsive дизайн для планшетов
-- Оптимизация для мобильных устройств
-
-## 🔧 Утилиты
-
-### Управление экранами
-
-- `ScreenUtil` - адаптивные размеры
-- `DeviceUtil` - информация об устройстве
-
-### Валидация
-
-- `ValidationUtil` - валидация форм
-- Email, пароль, телефон
-
-### Хелперы
-
-- `DateFormatter` - форматирование дат
-- `HelperFunctions` - общие функции
-- `StorageUtility` - работа с хранилищем
-
-## 🌐 Локализация
-
-Поддерживаемые языки:
-
-- Русский (ru.json)
-- Английский (en.json)
-
-## 📦 Зависимости
-
-### Основные
-
-- `get: ^4.6.6` - управление состоянием
-- `get_storage: ^2.1.1` - локальное хранилище
-- `http: ^1.2.2` - HTTP клиент
-- `dio: ^5.8.0+1` - продвинутый HTTP клиент
-
-### UI/UX
-
-- `flutter_svg: ^2.0.16` - SVG поддержка
-- `carousel_slider: ^5.0.0` - карусели
-- `motion_tab_bar: ^2.0.0` - анимированные табы
-- `badges: ^2.0.3` - бейджи
-
-### Карты и геолокация
-
-- `flutter_map: ^8.0.0` - карты
-- `location: ^8.0.0` - геолокация
-- `latlong2: ^0.9.1` - координаты
-
-## 🚀 Развертывание
-
-### Android
-
-```bash
-flutter build apk --release
-```
-
-### iOS
-
-```bash
-flutter build ios --release
-```
-
-## 🧪 Тестирование
-
-```bash
-flutter test
-```
-
-## 📝 Логирование
-
-Используется встроенный `Logger` для отладки:
-
-- Уровни логирования
-- Цветной вывод
-- Фильтрация по тегам
-
-## 🔒 Безопасность
-
-- Локальное хранение токенов
-- Валидация входных данных
-- HTTPS для API запросов
-- Управление сессиями
-
-## 📞 Поддержка
-
-Для получения поддержки:
-
-1. Создайте issue в репозитории
-2. Опишите проблему подробно
-3. Приложите логи и скриншоты
-
-## 📄 Лицензия
-
-[Указать лицензию проекта]
-
-## 🤝 Вклад в проект
-
-1. Форкните репозиторий
-2. Создайте feature branch
-3. Внесите изменения
-4. Создайте Pull Request
-
----
-
-**Версия**: 0.1.0  
-**Последнее обновление**: 2025-01-07
+1. Новая бизнес-логика — в `domain/services`, без виджетов.
+2. Доступ к сети и диску — только через контракт репозитория в `domain/repositories`.
+3. View получает данные и команды через GetX-менеджер (`presentation/managers` или `features/*/controllers`).
+4. Комментарии — на русском.
+5. Перед коммитом: `flutter analyze` и `flutter test`.
